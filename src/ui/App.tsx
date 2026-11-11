@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { CFG } from '../config/defaults';
 import { HostSession } from '../net/host';
 import { GuestSession } from '../net/guest';
 import {
@@ -777,9 +778,9 @@ export const App: React.FC = () => {
                 : st.phase === 'PRE_QUIZ'
                   ? 'Chọn thẻ Nhóm 4 trước khi vào câu hỏi.'
                   : st.phase === 'QUIZ'
-                    ? 'Đến lượt trả lời câu hỏi trắc nghiệm (15s).'
+                    ? `Đến lượt trả lời câu hỏi trắc nghiệm (${CFG.quizSeconds}s).`
                     : st.phase === 'SHOP'
-                      ? 'Đến lượt mua thẻ tại Cửa hàng (20s).'
+                      ? `Đến lượt mua thẻ tại Cửa hàng (${CFG.shopSeconds}s).`
                       : 'Đến lượt đi cờ của bạn.';
               setHotseatCurtainReason(reason);
               setHotseatCurtainLocked(true);

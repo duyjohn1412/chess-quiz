@@ -1,7 +1,7 @@
 export const CFG = {
   clockSeconds: 300,            // lobby chọn 180 | 300 | 600
   movesPerQuiz: 3,              // mỗi bên đi 3 nước thì kích hoạt quiz
-  quizSeconds: 15,
+  quizSeconds: 20,
   preQuizSeconds: 10,
   resultSeconds: 3,
   shopSeconds: 20,
