@@ -1,0 +1,734 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model (Chess x Quiz — Firebase Spark / Anonymous Auth)
+    // ===============================================================
+    //
+    // Architecture & Audit Note (Spark Plan — No Cloud Functions):
+    //   This project runs purely client-side using Firebase Anonymous Auth
+    //   and Cloud Firestore ('chessdb' Enterprise database). Because there
+    //   are no Cloud Functions or server referees:
+    //   - The Host client runs GameCoordinator and writes room views.
+    //   - Elo delta magnitude ([-24, +24]), monotonicity vs outcome, and room
+    //     participation are enforced in rules; however, exact chess/quiz
+    //     correctness, exact Elo formula rounding, and replay across non-
+    //     consecutive historical matchIds (players/{uid} stores only the
+    //     latest lastMatchId) cannot be fully adjudicated without a backend.
+    //   - Ranked room creation is bound atomically via get/getAfter to two
+    //     active WAITING queue tickets transitioning to MATCHED together.
+    //
+    // Collection: players/{uid}
+    // Document ID: Firebase Auth UID
+    // Fields (12 required, strict schema):
+    //   - uid: string (immutable, == uid)
+    //   - name: string (1..24 chars)
+    //   - elo: int (600..3000; 1000 on create)
+    //   - wins: int (>= 0; 0 on create)
+    //   - losses: int (>= 0; 0 on create)
+    //   - draws: int (>= 0; 0 on create)
+    //   - streak: int (0..wins; 0 on create)
+    //   - bestElo: int (600..3000, >= elo; 1000 on create)
+    //   - gamesPlayed: int (== wins + losses + draws; 0 on create)
+    //   - ranked: bool (false on create; true after ranked match commit)
+    //   - lastMatchId: string ('' on create; ^[A-Z0-9]{6,16}$ after match)
+    //   - updatedAt: timestamp (== request.time)
+    //   * Contains NO PII (anonymous nicknames & public Elo stats only).
+    //
+    // Collection: queue/{uid}
+    // Document ID: Firebase Auth UID
+    // Fields (13 required, strict schema):
+    //   - uid: string (immutable, == uid)
+    //   - name: string (1..24 chars; immutable once WAITING)
+    //   - elo: int (600..3000; immutable once WAITING)
+    //   - clockSeconds: int (180 | 300 | 600; immutable)
+    //   - status: string ('WAITING' | 'MATCHED')
+    //   - roomCode: string ('' if WAITING; ^[A-Z0-9]{6,16}$ if MATCHED)
+    //   - hostUid: string ('' if WAITING; valid UID if MATCHED)
+    //   - peerUid: string ('' if WAITING; valid UID != uid if MATCHED)
+    //   - peerName: string ('' if WAITING; 1..24 chars if MATCHED)
+    //   - peerElo: int (0 if WAITING; 600..3000 if MATCHED)
+    //   - bankId: string (1..64 chars; immutable once WAITING)
+    //   - createdAt: timestamp (== request.time on initial ticket; immutable on heartbeat/match)
+    //   - updatedAt: timestamp (== request.time)
+    //
+    // Collection: rooms/{code}
+    // Document ID: Uppercase alphanumeric room code (6..16 chars)
+    // Fields (17 required, strict schema):
+    //   - code: string (immutable, == code, ^[A-Z0-9]{6,16}$)
+    //   - mode: string (immutable, 'private' | 'quick')
+    //   - isRanked: bool (immutable; false for 'private', true for 'quick')
+    //   - phase: string ('LOBBY' | 'PLAYING' | 'PRE_QUIZ' | 'QUIZ' | 'RESULT' | 'SHOP' | 'GAME_OVER')
+    //   - clockSeconds: int (immutable, 180 | 300 | 600)
+    //   - hostUid: string (immutable, valid UID == creator auth.uid)
+    //   - hostName: string (immutable, 1..24 chars)
+    //   - hostElo: int (immutable, 600..3000)
+    //   - guestUid: string | null (null on private create; valid UID != hostUid once joined)
+    //   - guestName: string | null (null on private create; 1..24 chars once joined)
+    //   - guestElo: int | null (null on private create; 600..3000 once joined)
+    //   - spectatorUids: list<string> (max 5 valid UIDs, [] on create, append-self only)
+    //   - status: string ('WAITING' | 'ACTIVE' | 'CLOSED' | 'ABANDONED')
+    //   - winner: string | null (null unless phase == 'GAME_OVER', then 'w' | 'b' | 'draw')
+    //   - actionSeqAck: int (>= 0; 0 on create)
+    //   - createdAt: timestamp (immutable, == request.time on create)
+    //   - updatedAt: timestamp (== request.time)
+    //
+    // Subcollection: rooms/{code}/views/{channel}
+    // Document ID: 'p2' | 'spectator'
+    // Fields (9 required, strict schema):
+    //   - seq: int (>= 1)
+    //   - stateJson: string (2..32768 chars)
+    //   - quizJson: string (0..8192 chars)
+    //   - resultJson: string (0..8192 chars)
+    //   - shopJson: string (0..8192 chars)
+    //   - eventJson: string (0..4096 chars)
+    //   - rejectJson: string (0..1024 chars)
+    //   - gameOverJson: string (0..8192 chars)
+    //   - updatedAt: timestamp (== request.time)
+    //
+    // Subcollection: rooms/{code}/actions/{actionId}
+    // Document ID: Action sequence string (1..32 chars)
+    // Fields (4 required, strict schema):
+    //   - uid: string (== request.auth.uid == room.guestUid)
+    //   - seq: int (>= 1)
+    //   - payloadJson: string (2..2048 chars)
+    //   - createdAt: timestamp (== request.time)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    function hasExactFields(data, fields) {
+      return hasOnlyAllowedFields(data, fields) && hasRequiredFields(data, fields);
+    }
+
+    function areImmutableFieldsUnchanged(prev, next, fields) {
+      return !next.diff(prev).affectedKeys().hasAny(fields);
+    }
+
+    function isValidUidString(v) {
+      return v is string &&
+        v.size() >= 1 &&
+        v.size() <= 128 &&
+        v.matches('^[A-Za-z0-9_.:-]+$');
+    }
+
+    function isValidDisplayName(v) {
+      return v is string && v.size() >= 1 && v.size() <= 24;
+    }
+
+    function isValidRoomCode(v) {
+      return v is string && v.matches('^[A-Z0-9]{6,16}$');
+    }
+
+    function isValidElo(v) {
+      return v is int && v >= 600 && v <= 3000;
+    }
+
+    function isValidClockSeconds(v) {
+      return v is int && v in [180, 300, 600];
+    }
+
+    function isValidSpectatorList(list) {
+      return list is list &&
+        list.size() <= 5 &&
+        (list.size() < 1 || isValidUidString(list[0])) &&
+        (list.size() < 2 || isValidUidString(list[1])) &&
+        (list.size() < 3 || isValidUidString(list[2])) &&
+        (list.size() < 4 || isValidUidString(list[3])) &&
+        (list.size() < 5 || isValidUidString(list[4]));
+    }
+
+    function getRoomDoc(code) {
+      return get(/databases/$(database)/documents/rooms/$(code));
+    }
+
+    // ===============================================================
+    // Domain Validators (Used in BOTH create and update)
+    // ===============================================================
+
+    function playerFields() {
+      return [
+        'uid',
+        'name',
+        'elo',
+        'wins',
+        'losses',
+        'draws',
+        'streak',
+        'bestElo',
+        'gamesPlayed',
+        'ranked',
+        'lastMatchId',
+        'updatedAt'
+      ];
+    }
+
+    function isValidPlayerProfile(data, uid) {
+      return hasExactFields(data, playerFields()) &&
+        isValidUidString(data.uid) &&
+        data.uid == uid &&
+        isValidDisplayName(data.name) &&
+        isValidElo(data.elo) &&
+        data.wins is int && data.wins >= 0 &&
+        data.losses is int && data.losses >= 0 &&
+        data.draws is int && data.draws >= 0 &&
+        data.streak is int && data.streak >= 0 && data.streak <= data.wins &&
+        isValidElo(data.bestElo) && data.bestElo >= data.elo &&
+        data.gamesPlayed is int &&
+        data.gamesPlayed >= 0 &&
+        data.wins + data.losses + data.draws == data.gamesPlayed &&
+        data.ranked is bool &&
+        data.lastMatchId is string && data.lastMatchId.size() <= 16 &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidPlayerCreate(data, uid) {
+      return isValidPlayerProfile(data, uid) &&
+        data.elo == 1000 &&
+        data.wins == 0 &&
+        data.losses == 0 &&
+        data.draws == 0 &&
+        data.streak == 0 &&
+        data.bestElo == 1000 &&
+        data.gamesPlayed == 0 &&
+        data.ranked == false &&
+        data.lastMatchId == '';
+    }
+
+    function isValidPlayerNameOnlyUpdate(prev, next) {
+      return areImmutableFieldsUnchanged(prev, next, [
+          'uid',
+          'elo',
+          'wins',
+          'losses',
+          'draws',
+          'streak',
+          'bestElo',
+          'gamesPlayed',
+          'ranked',
+          'lastMatchId'
+        ]) &&
+        next.diff(prev).affectedKeys().hasOnly(['name', 'updatedAt']);
+    }
+
+    function isValidRankedMatchRoom(prev, next, uid) {
+      let room = getRoomDoc(next.lastMatchId);
+      return room != null &&
+        room.data.isRanked == true &&
+        room.data.phase == 'GAME_OVER' &&
+        room.data.winner in ['w', 'b', 'draw'] &&
+        (room.data.hostUid == uid || room.data.guestUid == uid) &&
+        (
+          (
+            next.wins == prev.wins + 1 &&
+            room.data.winner != 'draw' &&
+            next.streak == prev.streak + 1 &&
+            next.elo >= prev.elo &&
+            next.elo <= prev.elo + 24
+          ) ||
+          (
+            next.losses == prev.losses + 1 &&
+            room.data.winner != 'draw' &&
+            next.streak == 0 &&
+            next.elo <= prev.elo &&
+            next.elo >= prev.elo - 24
+          ) ||
+          (
+            next.draws == prev.draws + 1 &&
+            room.data.winner == 'draw' &&
+            next.streak == 0 &&
+            next.elo >= prev.elo - 12 &&
+            next.elo <= prev.elo + 12
+          )
+        );
+    }
+
+    function isValidPlayerRankedCommit(prev, next, uid) {
+      return areImmutableFieldsUnchanged(prev, next, ['uid', 'name']) &&
+        next.diff(prev).affectedKeys().hasOnly([
+          'elo',
+          'wins',
+          'losses',
+          'draws',
+          'streak',
+          'bestElo',
+          'gamesPlayed',
+          'ranked',
+          'lastMatchId',
+          'updatedAt'
+        ]) &&
+        next.ranked == true &&
+        isValidRoomCode(next.lastMatchId) &&
+        next.lastMatchId != prev.lastMatchId &&
+        next.gamesPlayed == prev.gamesPlayed + 1 &&
+        next.wins >= prev.wins && next.wins <= prev.wins + 1 &&
+        next.losses >= prev.losses && next.losses <= prev.losses + 1 &&
+        next.draws >= prev.draws && next.draws <= prev.draws + 1 &&
+        (
+          (next.bestElo == prev.bestElo && next.bestElo >= next.elo) ||
+          (next.bestElo == next.elo && next.elo >= prev.bestElo)
+        ) &&
+        isValidRankedMatchRoom(prev, next, uid);
+    }
+
+    function queueFields() {
+      return [
+        'uid',
+        'name',
+        'elo',
+        'clockSeconds',
+        'status',
+        'roomCode',
+        'hostUid',
+        'peerUid',
+        'peerName',
+        'peerElo',
+        'bankId',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function isValidQueueTicket(data, uid) {
+      return hasExactFields(data, queueFields()) &&
+        isValidUidString(data.uid) &&
+        data.uid == uid &&
+        isValidDisplayName(data.name) &&
+        isValidElo(data.elo) &&
+        isValidClockSeconds(data.clockSeconds) &&
+        data.bankId is string && data.bankId.size() >= 1 && data.bankId.size() <= 64 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp && data.updatedAt == request.time &&
+        (
+          (
+            data.status == 'WAITING' &&
+            data.roomCode == '' &&
+            data.hostUid == '' &&
+            data.peerUid == '' &&
+            data.peerName == '' &&
+            data.peerElo == 0
+          ) ||
+          (
+            data.status == 'MATCHED' &&
+            isValidRoomCode(data.roomCode) &&
+            isValidUidString(data.hostUid) &&
+            isValidUidString(data.peerUid) &&
+            data.peerUid != uid &&
+            isValidDisplayName(data.peerName) &&
+            isValidElo(data.peerElo)
+          )
+        );
+    }
+
+    function isValidQueueInitialTicket(data, uid) {
+      return isValidQueueTicket(data, uid) &&
+        data.status == 'WAITING' &&
+        data.createdAt == request.time;
+    }
+
+    function isValidQueueOwnerUpdate(prev, next, uid) {
+      return (
+        // 1) Owner heartbeat while WAITING
+        (
+          prev.status == 'WAITING' &&
+          next.status == 'WAITING' &&
+          next.diff(prev).affectedKeys().hasOnly(['updatedAt'])
+        ) ||
+        // 2) Owner re-entering queue via setDoc when an orphaned ticket still exists
+        isValidQueueInitialTicket(next, uid) ||
+        // 3) Owner self-match completion inside matchmaking transaction
+        (
+          prev.status == 'WAITING' &&
+          next.status == 'MATCHED' &&
+          next.diff(prev).affectedKeys().hasOnly([
+            'status',
+            'roomCode',
+            'hostUid',
+            'peerUid',
+            'peerName',
+            'peerElo',
+            'updatedAt'
+          ]) &&
+          next.hostUid == uid &&
+          next.peerUid != uid &&
+          isValidQuickRoomAfterForMatch(next.roomCode, uid, next.peerUid, prev.clockSeconds)
+        )
+      );
+    }
+
+    function isValidQuickRoomAfterForMatch(roomCode, expectedHostUid, expectedGuestUid, expectedClock) {
+      let roomAfter = getAfter(/databases/$(database)/documents/rooms/$(roomCode));
+      return roomAfter != null &&
+        roomAfter.data.mode == 'quick' &&
+        roomAfter.data.isRanked == true &&
+        roomAfter.data.hostUid == expectedHostUid &&
+        roomAfter.data.guestUid == expectedGuestUid &&
+        roomAfter.data.clockSeconds == expectedClock;
+    }
+
+    function isValidQueueOpponentClaim(prev, next, uid) {
+      return prev.status == 'WAITING' &&
+        next.status == 'MATCHED' &&
+        next.diff(prev).affectedKeys().hasOnly([
+          'status',
+          'roomCode',
+          'hostUid',
+          'peerUid',
+          'peerName',
+          'peerElo',
+          'updatedAt'
+        ]) &&
+        next.hostUid == request.auth.uid &&
+        next.peerUid == request.auth.uid &&
+        isValidQuickRoomAfterForMatch(next.roomCode, request.auth.uid, uid, prev.clockSeconds);
+    }
+
+    function roomFields() {
+      return [
+        'code',
+        'mode',
+        'isRanked',
+        'phase',
+        'clockSeconds',
+        'hostUid',
+        'hostName',
+        'hostElo',
+        'guestUid',
+        'guestName',
+        'guestElo',
+        'spectatorUids',
+        'status',
+        'winner',
+        'actionSeqAck',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function isValidRoom(data, code) {
+      return hasExactFields(data, roomFields()) &&
+        isValidRoomCode(code) &&
+        data.code is string && data.code == code &&
+        data.mode in ['private', 'quick'] &&
+        data.isRanked is bool &&
+        (
+          (data.mode == 'private' && data.isRanked == false) ||
+          (data.mode == 'quick' && data.isRanked == true)
+        ) &&
+        data.phase in ['LOBBY', 'PLAYING', 'PRE_QUIZ', 'QUIZ', 'RESULT', 'SHOP', 'GAME_OVER'] &&
+        isValidClockSeconds(data.clockSeconds) &&
+        isValidUidString(data.hostUid) &&
+        isValidDisplayName(data.hostName) &&
+        isValidElo(data.hostElo) &&
+        (
+          (
+            data.mode == 'private' &&
+            data.guestUid == null &&
+            data.guestName == null &&
+            data.guestElo == null
+          ) ||
+          (
+            isValidUidString(data.guestUid) &&
+            data.guestUid != data.hostUid &&
+            isValidDisplayName(data.guestName) &&
+            isValidElo(data.guestElo)
+          )
+        ) &&
+        isValidSpectatorList(data.spectatorUids) &&
+        data.status in ['WAITING', 'ACTIVE', 'CLOSED', 'ABANDONED'] &&
+        (data.winner == null || data.winner in ['w', 'b', 'draw']) &&
+        (
+          (data.phase == 'GAME_OVER' && data.status == 'CLOSED' && data.winner in ['w', 'b', 'draw']) ||
+          (data.phase != 'GAME_OVER' && data.winner == null)
+        ) &&
+        data.actionSeqAck is int && data.actionSeqAck >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidQuickMatchPairing(data, code) {
+      let hostQueueBefore = get(/databases/$(database)/documents/queue/$(request.auth.uid));
+      let guestQueueBefore = get(/databases/$(database)/documents/queue/$(data.guestUid));
+      let hostQueueAfter = getAfter(/databases/$(database)/documents/queue/$(request.auth.uid));
+      let guestQueueAfter = getAfter(/databases/$(database)/documents/queue/$(data.guestUid));
+      return hostQueueBefore != null &&
+        guestQueueBefore != null &&
+        hostQueueBefore.data.status == 'WAITING' &&
+        guestQueueBefore.data.status == 'WAITING' &&
+        hostQueueBefore.data.clockSeconds == data.clockSeconds &&
+        guestQueueBefore.data.clockSeconds == data.clockSeconds &&
+        hostQueueAfter != null &&
+        guestQueueAfter != null &&
+        hostQueueAfter.data.status == 'MATCHED' &&
+        hostQueueAfter.data.roomCode == code &&
+        hostQueueAfter.data.hostUid == request.auth.uid &&
+        hostQueueAfter.data.peerUid == data.guestUid &&
+        guestQueueAfter.data.status == 'MATCHED' &&
+        guestQueueAfter.data.roomCode == code &&
+        guestQueueAfter.data.hostUid == request.auth.uid &&
+        guestQueueAfter.data.peerUid == request.auth.uid;
+    }
+
+    function isValidRoomCreate(data, code) {
+      return isValidRoom(data, code) &&
+        data.hostUid == request.auth.uid &&
+        data.phase == 'LOBBY' &&
+        data.spectatorUids.size() == 0 &&
+        data.winner == null &&
+        data.actionSeqAck == 0 &&
+        data.createdAt == request.time &&
+        (
+          (
+            data.mode == 'private' &&
+            data.isRanked == false &&
+            data.status == 'WAITING' &&
+            data.guestUid == null
+          ) ||
+          (
+            data.mode == 'quick' &&
+            data.isRanked == true &&
+            data.status == 'ACTIVE' &&
+            data.guestUid is string &&
+            data.guestUid != request.auth.uid &&
+            isValidQuickMatchPairing(data, code)
+          )
+        );
+    }
+
+    function isValidRoomHostUpdate(prev, next) {
+      return request.auth.uid == prev.hostUid &&
+        areImmutableFieldsUnchanged(prev, next, [
+          'code',
+          'mode',
+          'isRanked',
+          'clockSeconds',
+          'hostUid',
+          'hostName',
+          'hostElo',
+          'guestUid',
+          'guestName',
+          'guestElo',
+          'spectatorUids',
+          'createdAt'
+        ]) &&
+        next.diff(prev).affectedKeys().hasOnly(['phase', 'status', 'winner', 'actionSeqAck', 'updatedAt']) &&
+        (
+          !(prev.isRanked && prev.status == 'CLOSED') ||
+          (next.phase == prev.phase && next.status == prev.status && next.winner == prev.winner)
+        );
+    }
+
+    function isValidRoomGuestJoin(prev, next) {
+      return prev.mode == 'private' &&
+        prev.isRanked == false &&
+        prev.status == 'WAITING' &&
+        prev.phase == 'LOBBY' &&
+        prev.guestUid == null &&
+        request.auth.uid != prev.hostUid &&
+        next.diff(prev).affectedKeys().hasOnly(['guestUid', 'guestName', 'guestElo', 'updatedAt']) &&
+        next.guestUid == request.auth.uid;
+    }
+
+    function isValidRoomSpectatorJoin(prev, next) {
+      return prev.status != 'CLOSED' &&
+        request.auth.uid != prev.hostUid &&
+        request.auth.uid != prev.guestUid &&
+        !(request.auth.uid in prev.spectatorUids) &&
+        prev.spectatorUids.size() < 5 &&
+        next.diff(prev).affectedKeys().hasOnly(['spectatorUids', 'updatedAt']) &&
+        next.spectatorUids.size() == prev.spectatorUids.size() + 1 &&
+        next.spectatorUids.hasAll(prev.spectatorUids) &&
+        request.auth.uid in next.spectatorUids;
+    }
+
+    function viewFields() {
+      return [
+        'seq',
+        'stateJson',
+        'quizJson',
+        'resultJson',
+        'shopJson',
+        'eventJson',
+        'rejectJson',
+        'gameOverJson',
+        'updatedAt'
+      ];
+    }
+
+    function isValidViewDoc(data) {
+      return hasExactFields(data, viewFields()) &&
+        data.seq is int && data.seq >= 1 &&
+        data.stateJson is string && data.stateJson.size() >= 2 && data.stateJson.size() <= 32768 &&
+        data.quizJson is string && data.quizJson.size() <= 8192 &&
+        data.resultJson is string && data.resultJson.size() <= 8192 &&
+        data.shopJson is string && data.shopJson.size() <= 8192 &&
+        data.eventJson is string && data.eventJson.size() <= 4096 &&
+        data.rejectJson is string && data.rejectJson.size() <= 1024 &&
+        data.gameOverJson is string && data.gameOverJson.size() <= 8192 &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function canReadViewChannel(code, channel) {
+      let room = getRoomDoc(code);
+      return isAuthenticated() &&
+        channel in ['p2', 'spectator'] &&
+        room != null &&
+        (
+          request.auth.uid == room.data.hostUid ||
+          request.auth.uid == room.data.guestUid ||
+          (channel == 'spectator' && request.auth.uid in room.data.spectatorUids)
+        );
+    }
+
+    function isRoomHost(code) {
+      let room = getRoomDoc(code);
+      return isAuthenticated() &&
+        room != null &&
+        room.data.hostUid == request.auth.uid;
+    }
+
+    function isRoomGuest(code) {
+      let room = getRoomDoc(code);
+      return isAuthenticated() &&
+        room != null &&
+        room.data.guestUid == request.auth.uid;
+    }
+
+    function isRoomParticipant(code) {
+      let room = getRoomDoc(code);
+      return isAuthenticated() &&
+        room != null &&
+        (
+          room.data.hostUid == request.auth.uid ||
+          room.data.guestUid == request.auth.uid
+        );
+    }
+
+    function actionFields() {
+      return ['uid', 'seq', 'payloadJson', 'createdAt'];
+    }
+
+    function isValidActionDoc(data) {
+      return hasExactFields(data, actionFields()) &&
+        isValidUidString(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.seq is int && data.seq >= 1 &&
+        data.payloadJson is string && data.payloadJson.size() >= 2 && data.payloadJson.size() <= 2048 &&
+        data.createdAt is timestamp && data.createdAt == request.time;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Player Rank profiles & Top-20 leaderboard (public nicknames/Elo only, no PII)
+    match /players/{uid} {
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow create: if isOwner(uid) &&
+        uidUnchanged() &&
+        isValidPlayerCreate(request.resource.data, uid);
+      allow update: if isOwner(uid) &&
+        uidNotModified() &&
+        isValidPlayerProfile(request.resource.data, uid) &&
+        (
+          isValidPlayerNameOnlyUpdate(resource.data, request.resource.data) ||
+          isValidPlayerRankedCommit(resource.data, request.resource.data, uid)
+        );
+      allow delete: if false;
+    }
+
+    // Quick-match matchmaking queue tickets
+    match /queue/{uid} {
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated() && resource.data.status == 'WAITING';
+      allow create: if isOwner(uid) &&
+        uidUnchanged() &&
+        isValidQueueInitialTicket(request.resource.data, uid);
+      allow update: if isAuthenticated() &&
+        isValidQueueTicket(request.resource.data, uid) &&
+        (
+          (isOwner(uid) && uidNotModified() && isValidQueueOwnerUpdate(resource.data, request.resource.data, uid)) ||
+          (!isOwner(uid) && uidNotModified() && isValidQueueOpponentClaim(resource.data, request.resource.data, uid))
+        );
+      allow delete: if isOwner(uid);
+    }
+
+    // Game rooms (lookup by room code only; listing disabled to prevent scraping)
+    match /rooms/{code} {
+      allow get: if isAuthenticated();
+      allow list: if false;
+      allow create: if isAuthenticated() &&
+        isValidRoomCreate(request.resource.data, code);
+      allow update: if isAuthenticated() &&
+        isValidRoom(request.resource.data, code) &&
+        (
+          isValidRoomHostUpdate(resource.data, request.resource.data) ||
+          isValidRoomGuestJoin(resource.data, request.resource.data) ||
+          isValidRoomSpectatorJoin(resource.data, request.resource.data)
+        );
+      allow delete: if false;
+
+      // Host-published state views for Guest ('p2') and Spectators ('spectator')
+      match /views/{channel} {
+        allow get: if canReadViewChannel(code, channel);
+        allow list: if false;
+        allow create: if channel in ['p2', 'spectator'] &&
+          isRoomHost(code) &&
+          isValidViewDoc(request.resource.data);
+        allow update: if channel in ['p2', 'spectator'] &&
+          isRoomHost(code) &&
+          isValidViewDoc(request.resource.data);
+        allow delete: if false;
+      }
+
+      // Guest -> Host action queue
+      match /actions/{actionId} {
+        allow read: if isRoomParticipant(code);
+        allow create: if actionId.size() >= 1 &&
+          actionId.size() <= 32 &&
+          isRoomGuest(code) &&
+          uidUnchanged() &&
+          isValidActionDoc(request.resource.data);
+        allow update: if false;
+        allow delete: if isRoomHost(code);
+      }
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

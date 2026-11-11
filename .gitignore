@@ -1,0 +1,14 @@
+node_modules/
+dist/
+private/
+*.pdf
+questions.json
+!data/questions.sample.json
+!data/questions.gt1_40.json
+tsconfig.tsbuildinfo
+.env
+.env.*
+playwright-report/
+test-results/
+firebase-debug.log*
+.firebase/

@@ -1,0 +1,647 @@
+{
+  "bank": "gt1_curated_40",
+  "title": "Giải tích 1 — Bộ chọn lọc (40 câu)",
+  "version": 1,
+  "questions": [
+    {
+      "id": "gt1_001",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 2,
+      "question": "Vi phân của hàm số $f(x) = \\ln\\left(x + \\sqrt{x^2 + 3}\\right)$ là",
+      "options": [
+        "$\\dfrac{dx}{x + \\sqrt{x^2 + 3}}$",
+        "$\\dfrac{dx}{\\sqrt{x^2 + 3}}$",
+        "$\\left(\\sqrt{x^2 + 3} - x\\right)dx$",
+        "$\\dfrac{x\\,dx}{\\left(x + \\sqrt{x^2 + 3}\\right)\\sqrt{x^2 + 3}}$"
+      ],
+      "answer": 1,
+      "explain": "$df(x) = \\dfrac{1 + \\frac{x}{\\sqrt{x^2+3}}}{x + \\sqrt{x^2+3}}\\,dx = \\dfrac{dx}{\\sqrt{x^2 + 3}}$.",
+      "source": "Giải tích 1 (Câu 1)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_002",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 1,
+      "question": "Hàm số ngược của hàm số $f(x) = 3^x$ là",
+      "options": [
+        "$f^{-1}(x) = \\log_3 x$",
+        "$f^{-1}(x) = 3^x \\ln 3$",
+        "$f^{-1}(x) = -3^x$",
+        "$f^{-1}(x) = 3^{-x}$"
+      ],
+      "answer": 0,
+      "explain": "Từ $y = 3^x \\iff x = \\log_3 y$, suy ra $f^{-1}(x) = \\log_3 x$.",
+      "source": "Giải tích 1 (Câu 2)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_003",
+      "topic": "Khai triển Maclaurin",
+      "difficulty": 2,
+      "question": "Khai triển Maclaurin đến $x^5$ của hàm số $y = xe^{2x^2}$ là",
+      "options": [
+        "$x + 2x^3 + 4x^5 + o(x^5)$",
+        "$x + x^3 + 4x^5 + o(x^5)$",
+        "$x + 2x^3 + x^5 + o(x^5)$",
+        "$x + 2x^3 + 2x^5 + o(x^5)$"
+      ],
+      "answer": 3,
+      "explain": "$e^{2x^2} = 1 + 2x^2 + \\frac{(2x^2)^2}{2} + o(x^4) = 1 + 2x^2 + 2x^4 + o(x^4)$, nhân với $x$ được $x + 2x^3 + 2x^5 + o(x^5)$.",
+      "source": "Giải tích 1 (Câu 3)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_004",
+      "topic": "Đạo hàm cấp cao",
+      "difficulty": 2,
+      "question": "Đạo hàm cấp cao $f^{(5)}(x)$ của hàm số $f(x) = xe^{3x}$ là",
+      "options": [
+        "$(243x + 1215)e^{3x}$",
+        "$243(x + 6)e^{3x}$",
+        "$(243x + 405)e^{3x}$",
+        "$(243x + 81)e^{3x}$"
+      ],
+      "answer": 2,
+      "explain": "Theo công thức Leibniz: $f^{(5)}(x) = x(3^5 e^{3x}) + 5 \\cdot 1 \\cdot (3^4 e^{3x}) = (243x + 405)e^{3x}$.",
+      "source": "Giải tích 1 (Câu 4)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_005",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 1,
+      "question": "Tập giá trị của hàm số $f(x) = \\log(10 - x)$ là",
+      "options": [
+        "$[10, +\\infty)$",
+        "$\\mathbb{R}$",
+        "$(0, 10)$",
+        "$(-\\infty, 10)$"
+      ],
+      "answer": 1,
+      "explain": "Với $x < 10$, biểu thức $10 - x$ nhận mọi giá trị thuộc $(0, +\\infty)$, nên $\\log(10 - x)$ có tập giá trị là $\\mathbb{R}$.",
+      "source": "Giải tích 1 (Câu 5)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_009",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 2,
+      "question": "Vi phân của hàm số $f(x) = \\dfrac{1}{2}\\ln\\left|\\dfrac{x - 1}{x + 1}\\right|$ là",
+      "options": [
+        "$\\dfrac{dx}{x^2 - 1}$",
+        "$\\dfrac{x\\,dx}{x^2 - 1}$",
+        "$\\dfrac{(x - 1)dx}{2(x + 1)}$",
+        "$\\dfrac{(x + 1)dx}{2(x - 1)}$"
+      ],
+      "answer": 0,
+      "explain": "$f'(x) = \\frac{1}{2}\\left(\\frac{1}{x-1} - \\frac{1}{x+1}\\right) = \\frac{1}{x^2 - 1}$, suy ra $df = \\frac{dx}{x^2 - 1}$.",
+      "source": "Giải tích 1 (Câu 9)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_011",
+      "topic": "Khai triển Maclaurin",
+      "difficulty": 2,
+      "question": "Khai triển Maclaurin đến $x^4$ của hàm số $y = x\\ln(1 + 6x)$ là",
+      "options": [
+        "$6x^2 - 12x^3 + 36x^4 + o(x^4)$",
+        "$6x^2 - 16x^3 + 48x^4 + o(x^4)$",
+        "$6x^2 + 18x^3 + 54x^4 + o(x^4)$",
+        "$6x^2 - 18x^3 + 72x^4 + o(x^4)$"
+      ],
+      "answer": 3,
+      "explain": "$\\ln(1+6x) = 6x - \\frac{36x^2}{2} + \\frac{216x^3}{3} + o(x^3) = 6x - 18x^2 + 72x^3 + o(x^3)$, nhân với $x$ thu được đáp án A.",
+      "source": "Giải tích 1 (Câu 11)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_013",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 1,
+      "question": "Để tính giới hạn $\\displaystyle\\lim_{x \\to 0} \\frac{x - \\arctan x}{x^3}$ theo quy tắc L'Hospital, ta cần tính giới hạn nào dưới đây?",
+      "options": [
+        "$\\displaystyle\\lim_{x \\to 0} \\frac{1 - \\cos^2 x}{3x^2}$",
+        "$\\displaystyle\\lim_{x \\to 0} \\frac{\\arctan(x^2)}{3x^2}$",
+        "$\\displaystyle\\lim_{x \\to 0} \\frac{1 - \\dfrac{1}{x^2 + 1}}{3x^2}$",
+        "$\\displaystyle\\lim_{x \\to 0} \\frac{\\arctan x}{3x}$"
+      ],
+      "answer": 2,
+      "explain": "Đạo hàm tử và mẫu: $(x - \\arctan x)' = 1 - \\frac{1}{x^2+1}$, $(x^3)' = 3x^2$.",
+      "source": "Giải tích 1 (Câu 13)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_019",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 1,
+      "question": "Hàm số ngược của hàm số $f(x) = \\sqrt[3]{1 + x^3}$ là",
+      "options": [
+        "$f^{-1}(x) = \\sqrt[3]{1 - x^3}$",
+        "$f^{-1}(x) = \\sqrt[3]{x^3 - 1}$",
+        "$f^{-1}(x) = 1 - x^3$",
+        "$f^{-1}(x) = x^3 - 1$"
+      ],
+      "answer": 1,
+      "explain": "$y = \\sqrt[3]{1+x^3} \\iff y^3 = 1 + x^3 \\iff x = \\sqrt[3]{y^3 - 1}$.",
+      "source": "Giải tích 1 (Câu 19)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_020",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 2,
+      "question": "Cho hàm số $f(x) = \\dfrac{1}{1 + 2^{1/x}}$. Giá trị của $\\displaystyle\\lim_{x \\to 0^+} f(x)$ là",
+      "options": [
+        "$0$",
+        "$1$",
+        "$2$",
+        "$\\dfrac{1}{3}$"
+      ],
+      "answer": 0,
+      "explain": "Khi $x \\to 0^+$, $\\frac{1}{x} \\to +\\infty \\implies 2^{1/x} \\to +\\infty \\implies \\frac{1}{1+2^{1/x}} \\to 0$.",
+      "source": "Giải tích 1 (Câu 20)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_024",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 2,
+      "question": "Cho hàm số $f(x) = |x|\\sin x$. Khẳng định nào sau đây đúng?",
+      "options": [
+        "$f'(0) = 1$",
+        "$f'(0) = 2$",
+        "$f(x)$ không có đạo hàm tại $x = 0$",
+        "$f'(0) = 0$"
+      ],
+      "answer": 3,
+      "explain": "$\\lim_{x\\to 0^\\pm}\\frac{|x|\\sin x}{x} = \\lim_{x\\to 0^\\pm}(\\pm \\sin x) = 0$, nên $f'(0) = 0$.",
+      "source": "Giải tích 1 (Câu 24)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_026",
+      "topic": "Vô cùng bé",
+      "difficulty": 1,
+      "question": "Khi $x \\to 0$, vô cùng bé nào cho dưới đây tương đương với $x^2$?",
+      "options": [
+        "$1 - \\cos x$",
+        "$\\tan x$",
+        "$x\\ln(1 + \\sin x)$",
+        "$\\sin 3x$"
+      ],
+      "answer": 2,
+      "explain": "$\\ln(1 + \\sin x) \\sim \\sin x \\sim x$, suy ra $x\\ln(1 + \\sin x) \\sim x^2$.",
+      "source": "Giải tích 1 (Câu 26)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_030",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 2,
+      "question": "Tìm miền giá trị của hàm số $f(x) = \\log(10 - x^2)$",
+      "options": [
+        "$(0, \\sqrt{10})$",
+        "$(-\\infty, 1]$",
+        "$(-\\sqrt{10}, \\sqrt{10})$",
+        "$(0, 1]$"
+      ],
+      "answer": 1,
+      "explain": "Với $x \\in (-\\sqrt{10}, \\sqrt{10})$, ta có $0 < 10 - x^2 \\le 10$, suy ra $\\log_{10}(10 - x^2) \\in (-\\infty, 1]$.",
+      "source": "Giải tích 1 (Câu 30)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_031",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 3,
+      "question": "Tìm hàm ngược của hàm số $f(x) = \\arcsin\\sqrt{1 - 2^x},\\; x < 0$.",
+      "options": [
+        "$f^{-1}(x) = 2\\log_2(\\cos x)$",
+        "$f^{-1}(x) = \\dfrac{1}{\\arcsin\\sqrt{1 - 2^x}}$",
+        "$f^{-1}(x) = 2\\log_2(\\sin x)$",
+        "$f^{-1}(x) = \\arccos\\sqrt{1 - 2^x}$"
+      ],
+      "answer": 0,
+      "explain": "Đặt $y = \\arcsin\\sqrt{1 - 2^x} \\in (0, \\frac{\\pi}{2}) \\implies \\sin y = \\sqrt{1 - 2^x} \\implies 2^x = \\cos^2 y \\implies x = 2\\log_2(\\cos y)$.",
+      "source": "Giải tích 1 (Câu 31)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_032",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 2,
+      "question": "Cho hàm số $g(x) = 3x - 2$. Tìm hàm số $f(x)$ sao cho $f \\circ g(x) = 18x^2 - 36x + 19$.",
+      "options": [
+        "$f(x) = x^2 - 4x + 3$",
+        "$f(x) = 2x^2 - 12x + 3$",
+        "$f(x) = 2x^2 + 4x + 13$",
+        "$f(x) = 2x^2 - 4x + 3$"
+      ],
+      "answer": 3,
+      "explain": "Đặt $t = 3x - 2 \\implies x = \\frac{t + 2}{3}$. Thay vào được $f(t) = 2(t+2)^2 - 12(t+2) + 19 = 2t^2 - 4t + 3$.",
+      "source": "Giải tích 1 (Câu 32)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_035",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 1,
+      "question": "Tính giới hạn $\\displaystyle\\lim_{x \\to -4^-} \\arctan\\frac{5}{x + 4}$?",
+      "options": [
+        "$\\dfrac{5}{8}$",
+        "$\\dfrac{5}{4}$",
+        "$\\dfrac{-\\pi}{2}$",
+        "$\\dfrac{\\pi}{2}$"
+      ],
+      "answer": 2,
+      "explain": "Khi $x \\to -4^-$, $x + 4 \\to 0^- \\implies \\frac{5}{x+4} \\to -\\infty \\implies \\arctan\\left(\\frac{5}{x+4}\\right) \\to -\\frac{\\pi}{2}$.",
+      "source": "Giải tích 1 (Câu 35)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_036",
+      "topic": "Vô cùng bé",
+      "difficulty": 2,
+      "question": "Khi $x \\to 0$ ta có $\\ln(1 + x\\tan^3 x) \\sim ax^b$, với $a, b \\in \\mathbb{R}$. Tính $a + b$",
+      "options": [
+        "$11$",
+        "$5$",
+        "$6$",
+        "$9$"
+      ],
+      "answer": 1,
+      "explain": "$\\ln(1 + x\\tan^3 x) \\sim x\\tan^3 x \\sim x^4$, nên $a = 1, b = 4 \\implies a + b = 5$.",
+      "source": "Giải tích 1 (Câu 36)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_039",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 2,
+      "question": "Cho hàm số $f(x) = \\operatorname{arccot}\\dfrac{1}{x}$ có điểm gián đoạn $x = 0$. Bước nhảy của $f(x)$ tại $x = 0$ bằng:",
+      "options": [
+        "$-\\pi$",
+        "$\\dfrac{\\pi}{3}$",
+        "$\\pi$",
+        "$\\dfrac{\\pi}{4}$"
+      ],
+      "answer": 0,
+      "explain": "$\\lim_{x\\to 0^+} f(x) = \\operatorname{arccot}(+\\infty) = 0$; $\\lim_{x\\to 0^-} f(x) = \\operatorname{arccot}(-\\infty) = \\pi$. Bước nhảy $f(0^+) - f(0^-) = -\\pi$.",
+      "source": "Giải tích 1 (Câu 39)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_043",
+      "topic": "Đạo hàm cấp cao",
+      "difficulty": 2,
+      "question": "Cho hàm số $f(x) = x^2 \\ln x$. Tính $f^{(5)}(1)$",
+      "options": [
+        "$6$",
+        "$10$",
+        "$8$",
+        "$4$"
+      ],
+      "answer": 3,
+      "explain": "$f'(x) = 2x\\ln x + x$, $f''(x) = 2\\ln x + 3$, $f'''(x) = \\frac{2}{x}$, $f^{(4)}(x) = -\\frac{2}{x^2}$, $f^{(5)}(x) = \\frac{4}{x^3} \\implies f^{(5)}(1) = 4$.",
+      "source": "Giải tích 1 (Câu 43)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_046",
+      "topic": "Cực trị & định lý",
+      "difficulty": 3,
+      "question": "Hàm số $f(x) = x^4 \\ln^{100} x$ có mấy điểm cực trị?",
+      "options": [
+        "$1$",
+        "$3$",
+        "$2$",
+        "$0$"
+      ],
+      "answer": 2,
+      "explain": "Trên $(0, +\\infty)$, $f'(x) = x^3 \\ln^{99} x\\,(4\\ln x + 100)$ đổi dấu tại cả hai nghiệm $x = e^{-25}$ và $x = 1$, nên có 2 cực trị.",
+      "source": "Giải tích 1 (Câu 46)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_056",
+      "topic": "Vô cùng bé",
+      "difficulty": 2,
+      "question": "Khi $x \\to 0$ ta có $\\sqrt[3]{1 + 6x^2\\sin x} - 1 \\sim mx^\\alpha$, với $m, \\alpha \\in \\mathbb{R}$. Tính $m + \\alpha$?",
+      "options": [
+        "$6$",
+        "$5$",
+        "$9$",
+        "$11$"
+      ],
+      "answer": 1,
+      "explain": "$\\sqrt[3]{1 + 6x^2\\sin x} - 1 \\sim \\frac{1}{3}(6x^2 \\cdot x) = 2x^3$, suy ra $m = 2, \\alpha = 3 \\implies m + \\alpha = 5$.",
+      "source": "Giải tích 1 (Câu 56)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_058",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 3,
+      "question": "Hàm số $f(x) = \\dfrac{x}{\\ln|1 + x|}$ có mấy điểm gián đoạn bỏ được?",
+      "options": [
+        "$2$",
+        "$3$",
+        "$1$",
+        "$0$"
+      ],
+      "answer": 0,
+      "explain": "Tại $x = 0$: $\\lim f(x) = 1$; tại $x = -1$: $\\ln|1+x|\\to -\\infty \\implies \\lim f(x) = 0$; tại $x = -2$: $f(x) \\to \\infty$. Có 2 điểm gián đoạn bỏ được ($0$ và $-1$).",
+      "source": "Giải tích 1 (Câu 58)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_060",
+      "topic": "Đạo hàm cấp cao",
+      "difficulty": 3,
+      "question": "Cho hàm số $f(x) = x^2 e^{-2x}$. Tính $f^{(5)}(1)e^2$?",
+      "options": [
+        "$50$",
+        "$48$",
+        "$-36$",
+        "$-32$"
+      ],
+      "answer": 3,
+      "explain": "Theo Leibniz: $f^{(5)}(x) = \\left[x^2(-32) + 5(2x)(16) + 10(2)(-8)\\right]e^{-2x} = (-32x^2 + 160x - 160)e^{-2x} \\implies f^{(5)}(1)e^2 = -32$.",
+      "source": "Giải tích 1 (Câu 60)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_061",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 2,
+      "question": "Cho hàm số $f(x) = e^x + x$ có hàm số ngược là $g(x)$. Tính $g'(1)$?",
+      "options": [
+        "$1$",
+        "$e + 1$",
+        "$\\dfrac{1}{2}$",
+        "$0$"
+      ],
+      "answer": 2,
+      "explain": "Ta có $f(0) = 1 \\implies g(1) = 0$. Vậy $g'(1) = \\frac{1}{f'(0)} = \\frac{1}{e^0 + 1} = \\frac{1}{2}$.",
+      "source": "Giải tích 1 (Câu 61)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_065",
+      "topic": "Tiệm cận & đường cong",
+      "difficulty": 1,
+      "question": "Tìm tiệm cận xiên của đồ thị hàm số $y = \\dfrac{x^2 + 3x + 1}{x + 2}$.",
+      "options": [
+        "$x = -2$",
+        "$y = x + 1$",
+        "$y = x + 3$",
+        "$y = x$"
+      ],
+      "answer": 1,
+      "explain": "$\\frac{x^2 + 3x + 1}{x + 2} = x + 1 - \\frac{1}{x + 2}$, nên tiệm cận xiên là $y = x + 1$.",
+      "source": "Giải tích 1 (Câu 65)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_066",
+      "topic": "Cực trị & định lý",
+      "difficulty": 2,
+      "question": "Hàm số $f(x) = x - 5\\sqrt[5]{x^4}$ có mấy điểm cực trị?",
+      "options": [
+        "$2$",
+        "$3$",
+        "$1$",
+        "$0$"
+      ],
+      "answer": 0,
+      "explain": "$f'(x) = 1 - 4x^{-1/5}$ đổi dấu tại $x = 0$ (cực đại nhọn) và $x = 4^5 = 1024$ (cực tiểu), nên có 2 cực trị.",
+      "source": "Giải tích 1 (Câu 66)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_067",
+      "topic": "Khai triển Maclaurin",
+      "difficulty": 3,
+      "question": "Cho hàm số $f(x) = \\arctan(x^2)$. Tính $f^{(10)}(0)$",
+      "options": [
+        "$425764$",
+        "$334665$",
+        "$223460$",
+        "$725760$"
+      ],
+      "answer": 3,
+      "explain": "$\\arctan(x^2) = x^2 - \\frac{x^6}{3} + \\frac{x^{10}}{5} - \\dots$, nên $\\frac{f^{(10)}(0)}{10!} = \\frac{1}{5} \\implies f^{(10)}(0) = \\frac{3628800}{5} = 725760$.",
+      "source": "Giải tích 1 (Câu 67)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_071",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 1,
+      "question": "Cho hàm số $f(x) = x^2 + x + 1$. Tính $(f \\circ f)'(1)$.",
+      "options": [
+        "$6$",
+        "$27$",
+        "$21$",
+        "$18$"
+      ],
+      "answer": 2,
+      "explain": "$f(1) = 3$, $f'(x) = 2x + 1 \\implies (f\\circ f)'(1) = f'(f(1))f'(1) = f'(3)f'(1) = 7 \\cdot 3 = 21$.",
+      "source": "Giải tích 1 (Câu 71)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_072",
+      "topic": "Đạo hàm cấp cao",
+      "difficulty": 3,
+      "question": "Cho hàm số $f(x) = x\\sin 2x$. Tính $f^{(5)}\\left(\\dfrac{\\pi}{2}\\right)$.",
+      "options": [
+        "$0$",
+        "$-16\\pi$",
+        "$16$",
+        "$16\\pi$"
+      ],
+      "answer": 1,
+      "explain": "Theo Leibniz: $f^{(5)}(x) = x \\cdot 32\\cos 2x + 5 \\cdot 16\\sin 2x$. Tại $x = \\frac{\\pi}{2}$, kết quả là $\\frac{\\pi}{2}(-32) + 0 = -16\\pi$.",
+      "source": "Giải tích 1 (Câu 72)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_077",
+      "topic": "Đạo hàm & vi phân",
+      "difficulty": 1,
+      "question": "Tính đạo hàm của hàm số $y = \\arctan\\sqrt{2x - 1}$.",
+      "options": [
+        "$y' = \\dfrac{1}{2x\\sqrt{2x - 1}}$",
+        "$y' = \\dfrac{1}{2x}$",
+        "$y' = \\dfrac{1}{4x\\sqrt{2x - 1}}$",
+        "$y' = \\dfrac{1}{x\\sqrt{2x - 1}}$"
+      ],
+      "answer": 0,
+      "explain": "$y' = \\frac{1}{1 + (2x-1)} \\cdot \\frac{1}{\\sqrt{2x-1}} = \\frac{1}{2x\\sqrt{2x-1}}$.",
+      "source": "Giải tích 1 (Câu 77)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_085",
+      "topic": "Cực trị & định lý",
+      "difficulty": 2,
+      "question": "Số điểm cực trị của hàm số $y = \\sqrt[3]{x^2} + \\sqrt[3]{(x - 4)^2}$ là",
+      "options": [
+        "$1$",
+        "$0$",
+        "$2$",
+        "$3$"
+      ],
+      "answer": 3,
+      "explain": "$y'(x) = \\frac{2}{3}\\left(x^{-1/3} + (x-4)^{-1/3}\\right)$ đổi dấu qua $x = 0, x = 2, x = 4$, nên có 3 điểm cực trị.",
+      "source": "Giải tích 1 (Câu 85)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_088",
+      "topic": "Tiệm cận & đường cong",
+      "difficulty": 1,
+      "question": "Đồ thị hàm số $y = \\dfrac{x^2}{2x + 1}$ có một tiệm cận xiên là $y = ax + b,\\; (a, b \\in \\mathbb{R})$. Giá trị của $a + b$ là",
+      "options": [
+        "$\\dfrac{3}{2}$",
+        "$\\dfrac{-1}{4}$",
+        "$\\dfrac{1}{4}$",
+        "$\\dfrac{3}{4}$"
+      ],
+      "answer": 2,
+      "explain": "$\\frac{x^2}{2x + 1} = \\frac{1}{2}x - \\frac{1}{4} + \\frac{1}{4(2x+1)}$, nên $a = \\frac{1}{2}, b = -\\frac{1}{4} \\implies a + b = \\frac{1}{4}$.",
+      "source": "Giải tích 1 (Câu 88)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_091",
+      "topic": "Giới hạn & liên tục",
+      "difficulty": 3,
+      "question": "Trong các hàm số sau, tìm hàm số nhận điểm $x = 0$ là điểm gián đoạn loại 1 với bước nhảy lớn nhất.",
+      "options": [
+        "$f(x) = \\sin\\dfrac{1}{x}$",
+        "$f(x) = \\operatorname{arccot}\\left(\\dfrac{-1}{x}\\right)$",
+        "$f(x) = \\dfrac{|x|}{\\sin x}$",
+        "$f(x) = \\dfrac{1}{e^{1/x} - 1}$"
+      ],
+      "answer": 1,
+      "explain": "A có giới hạn trái $0$, phải $\\pi \\implies$ bước nhảy $\\pi$; B có bước nhảy $1$; C gián đoạn loại 2; D có bước nhảy $2$.",
+      "source": "Giải tích 1 (Câu 91)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_092",
+      "topic": "Khai triển Maclaurin",
+      "difficulty": 1,
+      "question": "Tìm khai triển Maclaurin của hàm số $f(x) = \\dfrac{1}{\\sqrt{1 + x}}$ đến $o(x^2)$.",
+      "options": [
+        "$f(x) = 1 - \\dfrac{1}{2}x + \\dfrac{3}{8}x^2 + o(x^2)$",
+        "$f(x) = 1 + \\dfrac{1}{2}x - \\dfrac{3}{32}x^2 + o(x^2)$",
+        "$f(x) = 1 - \\dfrac{1}{2}x - \\dfrac{3}{8}x^2 + o(x^2)$",
+        "$f(x) = 1 - \\dfrac{1}{2}x + \\dfrac{3}{16}x^2 + o(x^2)$"
+      ],
+      "answer": 0,
+      "explain": "$(1+x)^{-1/2} = 1 - \\frac{1}{2}x + \\frac{(-\\frac{1}{2})(-\\frac{3}{2})}{2}x^2 + o(x^2) = 1 - \\frac{1}{2}x + \\frac{3}{8}x^2 + o(x^2)$.",
+      "source": "Giải tích 1 (Câu 92)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_095",
+      "topic": "Vô cùng bé",
+      "difficulty": 1,
+      "question": "Khi $x \\to 1$ thì $f(x) = \\ln(x^3)$ là một vô cùng bé tương đương với",
+      "options": [
+        "$(x - 1)^2$",
+        "$3x$",
+        "$2(x - 1)$",
+        "$x^3 - 1$"
+      ],
+      "answer": 3,
+      "explain": "$\\ln(x^3) = \\ln(1 + (x^3 - 1)) \\sim x^3 - 1$ khi $x \\to 1$.",
+      "source": "Giải tích 1 (Câu 95)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_097",
+      "topic": "Cực trị & định lý",
+      "difficulty": 2,
+      "question": "Giá trị cực trị của hàm số $y = \\dfrac{e^x}{x^2}$ là",
+      "options": [
+        "$e$",
+        "$\\dfrac{1}{4e^2}$",
+        "$\\dfrac{e^2}{4}$",
+        "$2$"
+      ],
+      "answer": 2,
+      "explain": "$y' = \\frac{e^x(x-2)}{x^3}$ chỉ đổi dấu tại $x = 2$ (từ âm sang dương), cho cực tiểu $y(2) = \\frac{e^2}{4}$.",
+      "source": "Giải tích 1 (Câu 97)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_105",
+      "topic": "Tiệm cận & đường cong",
+      "difficulty": 2,
+      "question": "Đồ thị của hàm số $y = \\dfrac{1}{2^x - 4}$ có bao nhiêu đường tiệm cận?",
+      "options": [
+        "$4$",
+        "$3$",
+        "$5$",
+        "$2$"
+      ],
+      "answer": 1,
+      "explain": "1 TCĐ $x = 2$ và 2 TCN phân biệt ($y = 0$ khi $x \\to +\\infty$, $y = -\\frac{1}{4}$ khi $x \\to -\\infty$). Tổng 3 tiệm cận.",
+      "source": "Giải tích 1 (Câu 105)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_106",
+      "topic": "Tiệm cận & đường cong",
+      "difficulty": 3,
+      "question": "Tìm tiệm cận xiên của đồ thị hàm số $y = x\\operatorname{arccot} x$.",
+      "options": [
+        "$y = \\pi x + 1$",
+        "$y = x + 1$",
+        "$y = x + \\dfrac{\\pi}{2}$",
+        "$y = \\dfrac{\\pi}{2}x + 1$"
+      ],
+      "answer": 0,
+      "explain": "Khi $x \\to -\\infty$, $\\operatorname{arccot} x = \\pi + \\frac{1}{x} + O(x^{-3})$, suy ra $y = x\\operatorname{arccot} x = \\pi x + 1 + O(x^{-2})$.",
+      "source": "Giải tích 1 (Câu 106)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_109",
+      "topic": "Cực trị & định lý",
+      "difficulty": 1,
+      "question": "Cho hàm số $f(x) = \\dfrac{\\ln x}{x}$. Khẳng định nào sau đây đúng?",
+      "options": [
+        "$f(x)$ đạt cực tiểu tại $x = \\dfrac{1}{e}$.",
+        "$f(x)$ đạt cực tiểu tại $x = e$.",
+        "$f(x)$ đạt cực đại tại $x = \\dfrac{1}{e}$.",
+        "$f(x)$ đạt cực đại tại $x = e$."
+      ],
+      "answer": 3,
+      "explain": "$f'(x) = \\frac{1 - \\ln x}{x^2}$ dương trên $(0, e)$ và âm trên $(e, +\\infty)$, nên $f(x)$ đạt cực đại tại $x = e$.",
+      "source": "Giải tích 1 (Câu 109)",
+      "status": "verified"
+    },
+    {
+      "id": "gt1_112",
+      "topic": "Tiệm cận & đường cong",
+      "difficulty": 2,
+      "question": "Tìm tiệm cận xiên của đồ thị hàm số $y = xe^{1/x}$.",
+      "options": [
+        "$y = 2x - 1$",
+        "$y = x$",
+        "$y = x + 1$",
+        "$y = x + e$"
+      ],
+      "answer": 2,
+      "explain": "Khi $x \\to \\pm\\infty$, $e^{1/x} = 1 + \\frac{1}{x} + \\frac{1}{2x^2} + o(x^{-2}) \\implies y = x + 1 + o(1)$.",
+      "source": "Giải tích 1 (Câu 112)",
+      "status": "verified"
+    }
+  ]
+}

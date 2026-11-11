@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "basePrice": { "1": 10, "2": 20, "3": 45, "4": 70 },
+  "cards": [
+    {
+      "id": "time_plus",
+      "group": "time",
+      "name": "Cộng giờ",
+      "icon": "⏱",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 5, "desc": "Cộng +5 giây vào đồng hồ của bạn" },
+        { "level": 2, "value": 10, "desc": "Cộng +10 giây vào đồng hồ của bạn" },
+        { "level": 3, "value": 15, "desc": "Cộng +15 giây vào đồng hồ của bạn" },
+        { "level": 4, "value": 20, "desc": "Cộng +20 giây vào đồng hồ của bạn" }
+      ]
+    },
+    {
+      "id": "time_minus",
+      "group": "time",
+      "name": "Trừ giờ",
+      "icon": "⌛",
+      "priceMult": 1.2,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 5, "desc": "Trừ 5 giây đồng hồ đối thủ (không dưới 10s)" },
+        { "level": 2, "value": 10, "desc": "Trừ 10 giây đồng hồ đối thủ (không dưới 10s)" },
+        { "level": 3, "value": 15, "desc": "Trừ 15 giây đồng hồ đối thủ (không dưới 10s)" },
+        { "level": 4, "value": 20, "desc": "Trừ 20 giây đồng hồ đối thủ (không dưới 10s)" }
+      ]
+    },
+    {
+      "id": "time_force",
+      "group": "time",
+      "name": "Ép đi nhanh",
+      "icon": "⚡",
+      "priceMult": 0.8,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 25, "desc": "Ép đối thủ đi nước kế trong 25s (quá hạn −1/8 giờ còn lại)" },
+        { "level": 2, "value": 20, "desc": "Ép đối thủ đi nước kế trong 20s (quá hạn −1/8 giờ còn lại)" },
+        { "level": 3, "value": 15, "desc": "Ép đối thủ đi nước kế trong 15s (quá hạn −1/8 giờ còn lại)" },
+        { "level": 4, "value": 10, "desc": "Ép đối thủ đi nước kế trong 10s (quá hạn −1/8 giờ còn lại)" }
+      ]
+    },
+    {
+      "id": "time_freeze",
+      "group": "time",
+      "name": "Đóng băng",
+      "icon": "❄️",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 3, "desc": "Dừng đồng hồ của bạn trong 3 giây ở lượt này" },
+        { "level": 2, "value": 5, "desc": "Dừng đồng hồ của bạn trong 5 giây ở lượt này" },
+        { "level": 3, "value": 8, "desc": "Dừng đồng hồ của bạn trong 8 giây ở lượt này" },
+        { "level": 4, "value": 10, "desc": "Dừng đồng hồ của bạn trong 10 giây ở lượt này" }
+      ]
+    },
+    {
+      "id": "sup_radar",
+      "group": "support",
+      "name": "Radar",
+      "icon": "📡",
+      "priceMult": 0.8,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Tô đỏ quân mình đang bị đe dọa trong 1 lượt" },
+        { "level": 2, "value": 2, "desc": "Tô đỏ quân mình đang bị đe dọa trong 2 lượt" },
+        { "level": 3, "value": 3, "desc": "Tô đỏ quân mình đang bị đe dọa trong 3 lượt" },
+        { "level": 4, "value": 5, "desc": "Tô đỏ quân mình đang bị đe dọa trong 5 lượt" }
+      ]
+    },
+    {
+      "id": "sup_hint",
+      "group": "support",
+      "name": "Gợi ý nước đi",
+      "icon": "💡",
+      "priceMult": 1.2,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 6, "desc": "Hiện mũi tên nước tốt nhất (Stockfish depth 6)" },
+        { "level": 2, "value": 10, "desc": "Hiện mũi tên nước tốt nhất (Stockfish depth 10)" },
+        { "level": 3, "value": 14, "desc": "Hiện mũi tên nước tốt nhất (Stockfish depth 14)" },
+        { "level": 4, "value": 18, "desc": "Hiện mũi tên nước tốt nhất (Stockfish depth 18)" }
+      ]
+    },
+    {
+      "id": "sup_cand",
+      "group": "support",
+      "name": "Nước ứng viên",
+      "icon": "🧭",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 5, "desc": "Hiện 5 nước ứng viên (không kèm điểm)" },
+        { "level": 2, "value": 4, "desc": "Hiện 4 nước ứng viên (không kèm điểm)" },
+        { "level": 3, "value": 3, "desc": "Hiện 3 nước ứng viên (không kèm điểm)" },
+        { "level": 4, "value": 2, "desc": "Hiện 2 nước ứng viên (không kèm điểm)" }
+      ]
+    },
+    {
+      "id": "sup_scan",
+      "group": "support",
+      "name": "Quét ô",
+      "icon": "👁️‍🗨️",
+      "priceMult": 0.8,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Tô các ô đối thủ đang kiểm soát trong 1 lượt" },
+        { "level": 2, "value": 2, "desc": "Tô các ô đối thủ đang kiểm soát trong 2 lượt" },
+        { "level": 3, "value": 3, "desc": "Tô các ô đối thủ đang kiểm soát trong 3 lượt" },
+        { "level": 4, "value": 5, "desc": "Tô các ô đối thủ đang kiểm soát trong 5 lượt" }
+      ]
+    },
+    {
+      "id": "sup_eval",
+      "group": "support",
+      "name": "Đánh giá thế cờ",
+      "icon": "📊",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Thanh đánh giá (chỉ hiện bên hơn) trong 1 lượt" },
+        { "level": 2, "value": 2, "desc": "Thanh đánh giá (chỉ hiện bên hơn) trong 2 lượt" },
+        { "level": 3, "value": 3, "desc": "Thanh đánh giá kèm điểm số trong 3 lượt" },
+        { "level": 4, "value": 5, "desc": "Thanh đánh giá kèm điểm số trong 5 lượt" }
+      ]
+    },
+    {
+      "id": "sup_plan",
+      "group": "support",
+      "name": "Kế hoạch",
+      "icon": "⚖️",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "1 gợi ý ý đồ chiến lược bằng chữ" },
+        { "level": 2, "value": 2, "desc": "2 gợi ý ý đồ chiến lược bằng chữ" },
+        { "level": 3, "value": 3, "desc": "3 gợi ý ý đồ chiến lược bằng chữ" },
+        { "level": 4, "value": 4, "desc": "4 gợi ý chiến lược + tô ô then chốt" }
+      ]
+    },
+    {
+      "id": "peek_vault",
+      "group": "peek",
+      "name": "Soi kho",
+      "icon": "🔍",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Xem tên 1 thẻ ngẫu nhiên trong kho đối thủ" },
+        { "level": 2, "value": 2, "desc": "Xem tên 2 thẻ trong kho đối thủ" },
+        { "level": 3, "value": 3, "desc": "Xem toàn bộ tên thẻ trong kho đối thủ" },
+        { "level": 4, "value": 3, "desc": "Xem cả kho + mức thẻ đối thủ, giữ 3 lượt" }
+      ]
+    },
+    {
+      "id": "peek_track",
+      "group": "peek",
+      "name": "Theo dõi",
+      "icon": "🛰️",
+      "priceMult": 0.8,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 2, "desc": "Hiện tên thẻ khi đối thủ dùng trong 2 lượt" },
+        { "level": 2, "value": 4, "desc": "Hiện tên thẻ khi đối thủ dùng trong 4 lượt" },
+        { "level": 3, "value": 6, "desc": "Hiện tên thẻ khi đối thủ dùng trong 6 lượt" },
+        { "level": 4, "value": 10, "desc": "Hiện tên + mức thẻ đối thủ dùng trong 10 lượt" }
+      ]
+    },
+    {
+      "id": "peek_history",
+      "group": "peek",
+      "name": "Lộ lịch sử",
+      "icon": "📜",
+      "priceMult": 0.8,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Xem 1 thẻ đối thủ vừa dùng gần nhất" },
+        { "level": 2, "value": 2, "desc": "Xem 2 thẻ đối thủ đã dùng gần nhất" },
+        { "level": 3, "value": 3, "desc": "Xem 3 thẻ đối thủ đã dùng gần nhất" },
+        { "level": 4, "value": 5, "desc": "Xem 5 thẻ đối thủ đã dùng + thời điểm" }
+      ]
+    },
+    {
+      "id": "peek_coins",
+      "group": "peek",
+      "name": "Xem xu",
+      "icon": "🪙",
+      "priceMult": 0.8,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Xem số xu của đối thủ trong 1 lượt" },
+        { "level": 2, "value": 2, "desc": "Xem số xu của đối thủ trong 2 lượt" },
+        { "level": 3, "value": 3, "desc": "Xem số xu của đối thủ trong 3 lượt" },
+        { "level": 4, "value": 5, "desc": "Xem số xu + streak đối thủ trong 5 lượt" }
+      ]
+    },
+    {
+      "id": "peek_shop",
+      "group": "peek",
+      "name": "Soi shop",
+      "icon": "🛒",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Xem thẻ đối thủ vừa mua ở 1 shop kế tiếp" },
+        { "level": 2, "value": 1, "desc": "Xem cả danh sách shop + thẻ mua ở 1 shop" },
+        { "level": 3, "value": 3, "desc": "Xem cả danh sách shop + thẻ mua trong 3 shop" },
+        { "level": 4, "value": 5, "desc": "Xem cả danh sách shop + thẻ mua trong 5 shop" }
+      ]
+    },
+    {
+      "id": "q_timecut",
+      "group": "quiz",
+      "name": "Giảm giờ trả lời",
+      "icon": "⏳",
+      "priceMult": 1.0,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 12, "desc": "Rút ngắn giờ trả lời quiz đối thủ còn 12s" },
+        { "level": 2, "value": 10, "desc": "Rút ngắn giờ trả lời quiz đối thủ còn 10s" },
+        { "level": 3, "value": 8, "desc": "Rút ngắn giờ trả lời quiz đối thủ còn 8s" },
+        { "level": 4, "value": 5, "desc": "Rút ngắn giờ trả lời quiz đối thủ còn 5s" }
+      ]
+    },
+    {
+      "id": "q_harder",
+      "group": "quiz",
+      "name": "Nâng độ khó",
+      "icon": "📈",
+      "priceMult": 1.2,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Nếu câu là Dễ, nâng thành Vừa cho đối thủ" },
+        { "level": 2, "value": 2, "desc": "Nâng câu của đối thủ lên 1 bậc độ khó" },
+        { "level": 3, "value": 3, "desc": "Ép câu của đối thủ luôn là Khó trong quiz này" },
+        { "level": 4, "value": 4, "desc": "Ép câu Khó cho đối thủ trong 2 quiz liên tiếp" }
+      ]
+    },
+    {
+      "id": "q_weak",
+      "group": "quiz",
+      "name": "Ép chủ đề yếu",
+      "icon": "🎯",
+      "priceMult": 1.2,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Chỉ xem gợi ý chủ đề yếu nhất của đối thủ" },
+        { "level": 2, "value": 2, "desc": "Ép câu đối thủ sang chủ đề họ yếu nhất (1 quiz)" },
+        { "level": 3, "value": 3, "desc": "Ép chủ đề yếu + độ khó Khó cho đối thủ (1 quiz)" },
+        { "level": 4, "value": 4, "desc": "Ép chủ đề yếu của đối thủ trong 2 quiz liền" }
+      ]
+    },
+    {
+      "id": "q_lockreroll",
+      "group": "quiz",
+      "name": "Khóa đổi câu",
+      "icon": "🔒",
+      "priceMult": 0.8,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Khóa nút Đổi câu của đối thủ trong 1 quiz" },
+        { "level": 2, "value": 2, "desc": "Khóa nút Đổi câu của đối thủ trong 2 quiz" },
+        { "level": 3, "value": 3, "desc": "Khóa nút Đổi câu của đối thủ trong 3 quiz" },
+        { "level": 4, "value": 5, "desc": "Khóa nút Đổi câu của đối thủ trong 5 quiz" }
+      ]
+    },
+    {
+      "id": "q_shuffle",
+      "group": "quiz",
+      "name": "Đảo đáp án",
+      "icon": "🔀",
+      "priceMult": 1.0,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Đảo vị trí A–D của đối thủ 1 lần sau 8s" },
+        { "level": 2, "value": 2, "desc": "Đảo vị trí A–D của đối thủ 1 lần sau 5s" },
+        { "level": 3, "value": 3, "desc": "Đảo vị trí A–D của đối thủ 1 lần sau 3s" },
+        { "level": 4, "value": 4, "desc": "Đảo vị trí A–D của đối thủ 2 lần (sau 3s và 8s)" }
+      ]
+    },
+    {
+      "id": "q_hide",
+      "group": "quiz",
+      "name": "Ẩn đáp án sai",
+      "icon": "🎭",
+      "priceMult": 1.2,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Ẩn 1 đáp án sai của bạn trong quiz này" },
+        { "level": 2, "value": 2, "desc": "Ẩn 2 đáp án sai của bạn trong quiz này" },
+        { "level": 3, "value": 3, "desc": "Ẩn 2 đáp án sai + thêm 5s trả lời cho bạn" },
+        { "level": 4, "value": 4, "desc": "Ẩn 2 đáp án sai + 5s + thấy trước độ khó" }
+      ]
+    },
+    {
+      "id": "q_flash",
+      "group": "quiz",
+      "name": "Flash",
+      "icon": "💥",
+      "priceMult": 1.0,
+      "harmful": true,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Chớp trắng sáng hết cỡ màn hình đối thủ 1 lần (0,5s)" },
+        { "level": 2, "value": 2, "desc": "Chớp trắng sáng hết cỡ 2 lần (cách nhau 3s)" },
+        { "level": 3, "value": 3, "desc": "Chớp trắng sáng hết cỡ 3 lần (cách nhau 3s)" },
+        { "level": 4, "value": 4, "desc": "Chớp trắng sáng hết cỡ 4 lần (cách nhau 3s)" }
+      ]
+    },
+    {
+      "id": "q_shield",
+      "group": "quiz",
+      "name": "Lá chắn",
+      "icon": "🛡️",
+      "priceMult": 1.0,
+      "harmful": false,
+      "levels": [
+        { "level": 1, "value": 1, "desc": "Hủy 1 thẻ gây hại của đối thủ trong cửa sổ 2s" },
+        { "level": 2, "value": 2, "desc": "Hủy 1 thẻ gây hại + trừ đối thủ 5s đồng hồ" },
+        { "level": 3, "value": 3, "desc": "Hủy tối đa 2 thẻ gây hại liên tiếp trong lượt" },
+        { "level": 4, "value": 4, "desc": "Hủy và phản ngược thẻ gây hại lại đối thủ" }
+      ]
+    }
+  ]
+}

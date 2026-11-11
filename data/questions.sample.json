@@ -1,0 +1,135 @@
+{
+  "bank": "sample_giai_tich",
+  "title": "Mẫu Giải tích (Demo)",
+  "version": 1,
+  "questions": [
+    {
+      "id": "smp_001",
+      "topic": "Đạo hàm",
+      "difficulty": 1,
+      "question": "Đạo hàm của hàm số $f(x) = \\ln(x^2 + 1)$ là:",
+      "options": [
+        "$\\dfrac{2x}{x^2+1}$",
+        "$\\dfrac{1}{x^2+1}$",
+        "$\\dfrac{x}{x^2+1}$",
+        "$2x\\ln(x^2+1)$"
+      ],
+      "answer": 0,
+      "explain": "$f'(x) = \\frac{(x^2+1)'}{x^2+1} = \\frac{2x}{x^2+1}$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_002",
+      "topic": "Giới hạn",
+      "difficulty": 1,
+      "question": "Giá trị của giới hạn $\\lim_{x \\to 0} \\dfrac{\\sin 5x}{2x}$ bằng:",
+      "options": [
+        "$\\dfrac{2}{5}$",
+        "$\\dfrac{5}{2}$",
+        "$1$",
+        "$0$"
+      ],
+      "answer": 1,
+      "explain": "$\\sin 5x \\sim 5x$ khi $x \\to 0$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_003",
+      "topic": "Hàm số & hàm ngược",
+      "difficulty": 1,
+      "question": "Hàm số ngược của $f(x) = 2^x$ là:",
+      "options": [
+        "$f^{-1}(x) = 2^{-x}$",
+        "$f^{-1}(x) = x^2$",
+        "$f^{-1}(x) = \\log_2 x$",
+        "$f^{-1}(x) = \\ln(2x)$"
+      ],
+      "answer": 2,
+      "explain": "$y = 2^x \\iff x = \\log_2 y$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_004",
+      "topic": "Khai triển Maclaurin",
+      "difficulty": 2,
+      "question": "Hệ số của $x^3$ trong khai triển Maclaurin của $e^{2x}$ là:",
+      "options": [
+        "$\\dfrac{4}{3}$",
+        "$\\dfrac{8}{3}$",
+        "$\\dfrac{2}{3}$",
+        "$8$"
+      ],
+      "answer": 0,
+      "explain": "$e^{2x} = 1 + 2x + 2x^2 + \\frac{(2x)^3}{3!} + \\dots = \\dots + \\frac{8}{6}x^3 = \\dots + \\frac{4}{3}x^3$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_005",
+      "topic": "Vi phân",
+      "difficulty": 2,
+      "question": "Vi phân của hàm số $y = \\arctan(3x)$ là:",
+      "options": [
+        "$\\dfrac{dx}{1+9x^2}$",
+        "$\\dfrac{3\\,dx}{1+3x^2}$",
+        "$\\dfrac{3\\,dx}{1+9x^2}$",
+        "$\\dfrac{dx}{\\sqrt{1-9x^2}}$"
+      ],
+      "answer": 2,
+      "explain": "$dy = (\\arctan 3x)'\\,dx = \\frac{3\\,dx}{1+9x^2}$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_006",
+      "topic": "Tiệm cận",
+      "difficulty": 2,
+      "question": "Tiệm cận xiên của đồ thị hàm số $y = \\dfrac{x^2 + 2x + 5}{x + 1}$ là:",
+      "options": [
+        "$y = x + 1$",
+        "$y = x + 2$",
+        "$y = x - 1$",
+        "$y = 2x + 1$"
+      ],
+      "answer": 0,
+      "explain": "$\\frac{x^2+2x+5}{x+1} = x + 1 + \\frac{4}{x+1}$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_007",
+      "topic": "Đạo hàm cấp cao",
+      "difficulty": 3,
+      "question": "Với $f(x) = x e^x$, giá trị của $f^{(10)}(0)$ bằng:",
+      "options": [
+        "$1$",
+        "$9$",
+        "$10$",
+        "$11$"
+      ],
+      "answer": 2,
+      "explain": "Công thức Leibniz: $f^{(n)}(x) = (x+n)e^x \\implies f^{(10)}(0) = 10$.",
+      "source": "sample",
+      "status": "verified"
+    },
+    {
+      "id": "smp_008",
+      "topic": "Giới hạn",
+      "difficulty": 3,
+      "question": "Giá trị của $\\lim_{x \\to 0} \\dfrac{1 - \\cos 2x}{x \\sin x}$ bằng:",
+      "options": [
+        "$1$",
+        "$2$",
+        "$4$",
+        "$0$"
+      ],
+      "answer": 1,
+      "explain": "$1 - \\cos 2x \\sim \\frac{(2x)^2}{2} = 2x^2$, mẫu $\\sim x^2$, tỉ số $= 2$.",
+      "source": "sample",
+      "status": "verified"
+    }
+  ]
+}

@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Duyệt Ngân Hàng Câu Hỏi — Giải Tích 1</title>
+    <link rel="stylesheet" href="../../node_modules/katex/dist/katex.min.css" />
+    <script src="../../node_modules/katex/dist/katex.min.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0e14;
+        --panel: #131823;
+        --panel-2: #192030;
+        --border: #2a3449;
+        --text: #e6ebf5;
+        --muted: #9aa7bd;
+        --ok: #2bd4a7;
+        --warn: #f5a524;
+        --bad: #ff5c7a;
+        --accent: #38bdf8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-block-size: 100dvh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
+        overflow-wrap: break-word;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(11, 14, 20, 0.94);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+      }
+
+      .container {
+        max-inline-size: 1380px;
+        margin-inline: auto;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+
+      .between {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      button,
+      select,
+      input,
+      textarea {
+        font: inherit;
+        color: var(--text);
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+      }
+
+      button {
+        cursor: pointer;
+        font-weight: 600;
+        transition: border-color 0.14s ease, background 0.14s ease;
+      }
+
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      button.primary {
+        background: #0ea5e9;
+        border-color: #38bdf8;
+        color: #06121d;
+      }
+
+      button.ok {
+        background: rgba(43, 212, 167, 0.14);
+        border-color: var(--ok);
+        color: #99f6e4;
+      }
+
+      button.warn {
+        background: rgba(245, 165, 36, 0.14);
+        border-color: var(--warn);
+        color: #fde68a;
+      }
+
+      button.active-chip {
+        border-color: var(--accent);
+        background: rgba(56, 189, 248, 0.15);
+      }
+
+      main {
+        padding: 1rem;
+      }
+
+      .toolbar {
+        margin-block-end: 0.85rem;
+        padding: 0.65rem 0.8rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      @media (max-width: 960px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.9rem;
+      }
+
+      .section-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-block-end: 0.55rem;
+      }
+
+      .crop-stage {
+        background: #ffffff;
+        border-radius: 10px;
+        padding: 0.65rem;
+        border: 1px solid #cbd5e1;
+        overflow: auto;
+        max-block-size: 72dvh;
+      }
+
+      .crop-stage img {
+        display: block;
+        inline-size: 100%;
+        block-size: auto;
+        transition: inline-size 0.18s ease;
+        cursor: zoom-in;
+      }
+
+      .crop-stage.zoomed img {
+        inline-size: 155%;
+        max-inline-size: none;
+        cursor: zoom-out;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 0.18rem 0.52rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+      }
+
+      .badge.verified {
+        border-color: var(--ok);
+        color: #99f6e4;
+        background: rgba(43, 212, 167, 0.12);
+      }
+
+      .badge.needs_review {
+        border-color: var(--warn);
+        color: #fde68a;
+        background: rgba(245, 165, 36, 0.12);
+      }
+
+      .badge.draft {
+        border-color: #94a3b8;
+        color: #cbd5e1;
+      }
+
+      .prompt-box {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.9rem 1rem;
+        font-size: 1.04rem;
+        line-height: 1.6;
+        margin-block: 0.65rem;
+      }
+
+      .options-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .opt-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        width: 100%;
+        text-align: start;
+        padding: 0.65rem 0.85rem;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-weight: 500;
+      }
+
+      .opt-btn.is-correct {
+        border-color: var(--ok);
+        background: rgba(43, 212, 167, 0.13);
+        box-shadow: inset 3px 0 0 var(--ok);
+      }
+
+      .explain-box {
+        margin-block-start: 0.75rem;
+        padding: 0.7rem 0.85rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(56, 189, 248, 0.06);
+        font-size: 0.92rem;
+      }
+
+      .edit-panel {
+        margin-block-start: 0.8rem;
+        padding-block-start: 0.8rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+
+      .edit-panel textarea,
+      .edit-panel input[type='text'] {
+        width: 100%;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.86rem;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      dialog {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        max-inline-size: 920px;
+        inline-size: min(94vw, 920px);
+        max-block-size: 85dvh;
+        padding: 1rem;
+      }
+
+      dialog::backdrop {
+        background: rgba(4, 6, 10, 0.75);
+      }
+
+      .skip-list {
+        display: grid;
+        gap: 0.65rem;
+        margin-block-start: 0.75rem;
+      }
+
+      .skip-item {
+        padding: 0.65rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+      }
+
+      .skip-item img {
+        display: block;
+        max-inline-size: 100%;
+        margin-block-start: 0.45rem;
+        background: #fff;
+        border-radius: 6px;
+        padding: 0.25rem;
+      }
+
+      .status-toast {
+        font-size: 0.84rem;
+        color: #99f6e4;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container between">
+        <div class="row">
+          <h1>🔍 Duyệt Ngân Hàng Câu Hỏi — Giải Tích 1</h1>
+          <span id="statusBadge" class="badge">Chưa tải dữ liệu</span>
+        </div>
+
+        <div class="row">
+          <label class="badge" style="cursor: pointer">
+            📂 Mở questions.json
+            <input id="fileInput" type="file" accept=".json,application/json" style="display: none" />
+          </label>
+          <button id="skippedBtn" type="button">🚫 Câu đã bỏ qua (0)</button>
+          <button id="saveServerBtn" type="button" class="ok" style="display: none">
+            💾 Lưu vào private/questions.json
+          </button>
+          <button id="downloadBtn" type="button" class="primary" disabled>⬇️ Xuất questions.json</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="toolbar between">
+        <div class="row" id="filterChips">
+          <button type="button" data-filter="all" class="active-chip">Tất cả (<span id="cntAll">0</span>)</button>
+          <button type="button" data-filter="review">Cần kiểm tra (<span id="cntReview">0</span>)</button>
+          <button type="button" data-filter="verified">Đã duyệt (<span id="cntVerified">0</span>)</button>
+        </div>
+
+        <div class="row">
+          <input id="searchInput" type="search" placeholder="Tìm ID / từ khóa…" style="min-inline-size: 190px" />
+          <select id="topicSelect" aria-label="Lọc chủ đề">
+            <option value="">Tất cả chủ đề</option>
+          </select>
+          <select id="diffSelect" aria-label="Lọc độ khó">
+            <option value="">Mọi độ khó</option>
+            <option value="1">M1 (Dễ)</option>
+            <option value="2">M2 (TB)</option>
+            <option value="3">M3 (Khó)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="emptyState" class="card" style="display: none; text-align: center; padding: 2rem">
+        <p style="margin-top: 0">
+          Không thấy file <code>../../private/questions.json</code> qua HTTP hoặc không có câu nào khớp bộ lọc.
+        </p>
+        <p class="muted" style="font-size: 0.9rem">
+          Hãy chạy <code>REVIEW.bat</code> hoặc bấm <b>📂 Mở questions.json</b> / kéo thả file JSON vào trang này.
+        </p>
+      </div>
+
+      <div id="workspace" class="split" style="display: none">
+        <section class="card">
+          <div class="between">
+            <span class="section-title" style="margin: 0">Ảnh gốc PDF (bấm ảnh để phóng to)</span>
+            <span id="cropLabel" class="muted" style="font-size: 0.8rem"></span>
+          </div>
+          <div id="cropStage" class="crop-stage" style="margin-block-start: 0.55rem">
+            <img id="cropImg" alt="Ảnh câu hỏi gốc từ PDF" />
+          </div>
+          <p id="sourceMeta" class="muted" style="font-size: 0.82rem; margin-block: 0.5rem 0"></p>
+        </section>
+
+        <section class="card">
+          <div class="between">
+            <div class="row">
+              <span id="qIdBadge" class="badge"></span>
+              <span id="qTopicBadge" class="badge"></span>
+              <span id="qDiffBadge" class="badge"></span>
+              <span id="qStateBadge" class="badge"></span>
+            </div>
+            <span id="navCounter" class="muted" style="font-weight: 700"></span>
+          </div>
+
+          <div id="promptPreview" class="prompt-box"></div>
+
+          <div id="optionsContainer" class="options-grid"></div>
+
+          <div id="explainBox" class="explain-box" style="display: none"></div>
+
+          <div class="between" style="margin-block-start: 0.85rem">
+            <div class="row">
+              <button id="prevBtn" type="button">← Trước</button>
+              <button id="nextBtn" type="button">Tiếp →</button>
+            </div>
+            <div class="row">
+              <button id="markReviewBtn" type="button" class="warn">⚠️ Cần sửa (R)</button>
+              <button id="markVerifiedBtn" type="button" class="ok">✅ Duyệt (V)</button>
+              <button id="toggleEditBtn" type="button">✏️ Sửa (E)</button>
+            </div>
+          </div>
+
+          <div id="editPanel" class="edit-panel" style="display: none">
+            <label>
+              <span class="muted" style="font-size: 0.8rem">Đề bài (hỗ trợ `$...$` và `$$...$$`):</span>
+              <textarea id="editQuestion" rows="3"></textarea>
+            </label>
+            <div class="row" style="gap: 0.5rem">
+              <label style="flex: 1">
+                <span class="muted" style="font-size: 0.8rem">Chủ đề:</span>
+                <input id="editTopic" type="text" />
+              </label>
+              <label>
+                <span class="muted" style="font-size: 0.8rem">Độ khó:</span>
+                <select id="editDiff">
+                  <option value="1">1 — Dễ</option>
+                  <option value="2">2 — Trung bình</option>
+                  <option value="3">3 — Khó</option>
+                </select>
+              </label>
+            </div>
+            <label><span class="muted" style="font-size: 0.8rem">Đáp án A:</span><input id="editOpt0" type="text" /></label>
+            <label><span class="muted" style="font-size: 0.8rem">Đáp án B:</span><input id="editOpt1" type="text" /></label>
+            <label><span class="muted" style="font-size: 0.8rem">Đáp án C:</span><input id="editOpt2" type="text" /></label>
+            <label><span class="muted" style="font-size: 0.8rem">Đáp án D:</span><input id="editOpt3" type="text" /></label>
+            <label>
+              <span class="muted" style="font-size: 0.8rem">Giải thích:</span>
+              <textarea id="editExplain" rows="2"></textarea>
+            </label>
+          </div>
+
+          <p class="muted" style="font-size: 0.78rem; margin-block: 0.85rem 0">
+            Phím tắt: <code>A/B/C/D</code> hoặc <code>1-4</code> đổi đáp án · <code>V</code> duyệt · <code>R</code> đánh dấu cần sửa ·
+            <code>E</code> bật sửa nhanh · <code>← / →</code> chuyển câu
+          </p>
+          <p id="saveToast" class="status-toast" style="margin-block: 0.35rem 0"></p>
+        </section>
+      </div>
+    </main>
+
+    <dialog id="skippedDialog">
+      <div class="between">
+        <h2 style="margin: 0; font-size: 1.05rem">🚫 Các câu đã lọc bỏ từ PDF gốc</h2>
+        <button id="closeSkippedBtn" type="button">Đóng</button>
+      </div>
+      <p id="skippedSummary" class="muted" style="font-size: 0.88rem"></p>
+      <div id="skippedList" class="skip-list"></div>
+    </dialog>
+
+    <script>
+      const LABELS = ['A', 'B', 'C', 'D'];
+      const STORAGE_KEY = 'gt1_review_autosave_v1';
+
+      let bank = null;
+      let skippedInfo = null;
+      let filterMode = 'all';
+      let searchTerm = '';
+      let topicFilter = '';
+      let diffFilter = '';
+      let currentIndex = 0;
+      let editing = false;
+
+      const els = {
+        statusBadge: document.getElementById('statusBadge'),
+        fileInput: document.getElementById('fileInput'),
+        skippedBtn: document.getElementById('skippedBtn'),
+        saveServerBtn: document.getElementById('saveServerBtn'),
+        downloadBtn: document.getElementById('downloadBtn'),
+        cntAll: document.getElementById('cntAll'),
+        cntReview: document.getElementById('cntReview'),
+        cntVerified: document.getElementById('cntVerified'),
+        searchInput: document.getElementById('searchInput'),
+        topicSelect: document.getElementById('topicSelect'),
+        diffSelect: document.getElementById('diffSelect'),
+        emptyState: document.getElementById('emptyState'),
+        workspace: document.getElementById('workspace'),
+        cropStage: document.getElementById('cropStage'),
+        cropImg: document.getElementById('cropImg'),
+        cropLabel: document.getElementById('cropLabel'),
+        sourceMeta: document.getElementById('sourceMeta'),
+        qIdBadge: document.getElementById('qIdBadge'),
+        qTopicBadge: document.getElementById('qTopicBadge'),
+        qDiffBadge: document.getElementById('qDiffBadge'),
+        qStateBadge: document.getElementById('qStateBadge'),
+        navCounter: document.getElementById('navCounter'),
+        promptPreview: document.getElementById('promptPreview'),
+        optionsContainer: document.getElementById('optionsContainer'),
+        explainBox: document.getElementById('explainBox'),
+        prevBtn: document.getElementById('prevBtn'),
+        nextBtn: document.getElementById('nextBtn'),
+        markReviewBtn: document.getElementById('markReviewBtn'),
+        markVerifiedBtn: document.getElementById('markVerifiedBtn'),
+        toggleEditBtn: document.getElementById('toggleEditBtn'),
+        editPanel: document.getElementById('editPanel'),
+        editQuestion: document.getElementById('editQuestion'),
+        editTopic: document.getElementById('editTopic'),
+        editDiff: document.getElementById('editDiff'),
+        editOpt0: document.getElementById('editOpt0'),
+        editOpt1: document.getElementById('editOpt1'),
+        editOpt2: document.getElementById('editOpt2'),
+        editOpt3: document.getElementById('editOpt3'),
+        editExplain: document.getElementById('editExplain'),
+        saveToast: document.getElementById('saveToast'),
+        skippedDialog: document.getElementById('skippedDialog'),
+        closeSkippedBtn: document.getElementById('closeSkippedBtn'),
+        skippedSummary: document.getElementById('skippedSummary'),
+        skippedList: document.getElementById('skippedList'),
+      };
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/\n/g, '<br />');
+      }
+
+      function renderMathHtml(input) {
+        if (typeof katex === 'undefined') return escapeHtml(input);
+        const parts = [];
+        let i = 0;
+        while (i < input.length) {
+          if (input[i] === '$') {
+            const isDisplay = input[i + 1] === '$';
+            const delim = isDisplay ? '$$' : '$';
+            const start = i + delim.length;
+            const end = input.indexOf(delim, start);
+            if (end !== -1) {
+              const tex = input.slice(start, end);
+              try {
+                parts.push(
+                  katex.renderToString(tex, {
+                    displayMode: isDisplay,
+                    throwOnError: false,
+                    strict: false,
+                  })
+                );
+                i = end + delim.length;
+                continue;
+              } catch {
+                // fallback
+              }
+            }
+          }
+          const nextDollar = input.indexOf('$', i + 1);
+          const chunk = nextDollar === -1 ? input.slice(i) : input.slice(i, nextDollar);
+          parts.push(escapeHtml(chunk));
+          i += chunk.length;
+        }
+        return parts.join('');
+      }
+
+      function persistAutosave() {
+        if (!bank) return;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(bank));
+        } catch {
+          // ignore
+        }
+      }
+
+      function filteredQuestions() {
+        if (!bank) return [];
+        const q = searchTerm.trim().toLowerCase();
+        return bank.questions.filter((item) => {
+          if (filterMode === 'verified' && item.status !== 'verified') return false;
+          if (filterMode === 'review' && item.status === 'verified') return false;
+          if (topicFilter && item.topic !== topicFilter) return false;
+          if (diffFilter && String(item.difficulty) !== diffFilter) return false;
+          if (q) {
+            const hay = `${item.id} ${item.topic} ${item.question} ${item.options.join(' ')}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+      }
+
+      function populateTopics() {
+        if (!bank) return;
+        const prev = topicFilter;
+        const topics = Array.from(new Set(bank.questions.map((q) => q.topic))).sort();
+        els.topicSelect.innerHTML = '<option value="">Tất cả chủ đề</option>';
+        for (const t of topics) {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          els.topicSelect.appendChild(opt);
+        }
+        els.topicSelect.value = topics.includes(prev) ? prev : '';
+        topicFilter = els.topicSelect.value;
+      }
+
+      function render() {
+        if (!bank) {
+          els.emptyState.style.display = 'block';
+          els.workspace.style.display = 'none';
+          return;
+        }
+
+        const total = bank.questions.length;
+        const verifiedCount = bank.questions.filter((x) => x.status === 'verified').length;
+        const reviewCount = total - verifiedCount;
+        els.cntAll.textContent = total;
+        els.cntVerified.textContent = verifiedCount;
+        els.cntReview.textContent = reviewCount;
+        els.statusBadge.textContent = `${verifiedCount}/${total} câu đã duyệt`;
+        els.statusBadge.className = `badge ${reviewCount === 0 ? 'verified' : 'needs_review'}`;
+        els.downloadBtn.disabled = false;
+
+        const list = filteredQuestions();
+        if (list.length === 0) {
+          els.emptyState.style.display = 'block';
+          els.workspace.style.display = 'none';
+          return;
+        }
+        els.emptyState.style.display = 'none';
+        els.workspace.style.display = 'grid';
+
+        if (currentIndex >= list.length) currentIndex = list.length - 1;
+        if (currentIndex < 0) currentIndex = 0;
+
+        const q = list[currentIndex];
+        els.navCounter.textContent = `${currentIndex + 1} / ${list.length}`;
+        els.prevBtn.disabled = currentIndex === 0;
+        els.nextBtn.disabled = currentIndex === list.length - 1;
+
+        els.cropImg.src = `../../private/crops/${q.id}.png`;
+        els.cropLabel.textContent = `private/crops/${q.id}.png`;
+        els.sourceMeta.textContent = q.source || q.id;
+
+        els.qIdBadge.textContent = q.id;
+        els.qTopicBadge.textContent = q.topic;
+        els.qDiffBadge.textContent = `M${q.difficulty}`;
+        els.qStateBadge.textContent =
+          q.status === 'verified' ? '✅ Đã duyệt' : q.status === 'needs_review' ? '⚠️ Cần sửa' : '📝 Nháp';
+        els.qStateBadge.className = `badge ${q.status}`;
+
+        els.promptPreview.innerHTML = renderMathHtml(q.question);
+
+        els.optionsContainer.innerHTML = '';
+        q.options.forEach((optText, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `opt-btn ${q.answer === idx ? 'is-correct' : ''}`;
+          btn.innerHTML = `<span class="badge">${LABELS[idx]}</span><span style="flex:1">${renderMathHtml(optText)}</span>`;
+          btn.addEventListener('click', () => {
+            q.answer = idx;
+            persistAutosave();
+            render();
+          });
+          els.optionsContainer.appendChild(btn);
+        });
+
+        if (q.explain && q.explain.trim()) {
+          els.explainBox.style.display = 'block';
+          els.explainBox.innerHTML = `<strong>Lời giải:</strong> ${renderMathHtml(q.explain)}`;
+        } else {
+          els.explainBox.style.display = 'none';
+        }
+
+        els.editPanel.style.display = editing ? 'flex' : 'none';
+        if (editing) {
+          els.editQuestion.value = q.question;
+          els.editTopic.value = q.topic;
+          els.editDiff.value = String(q.difficulty);
+          els.editOpt0.value = q.options[0];
+          els.editOpt1.value = q.options[1];
+          els.editOpt2.value = q.options[2];
+          els.editOpt3.value = q.options[3];
+          els.editExplain.value = q.explain || '';
+        }
+      }
+
+      function applyInlineEdit() {
+        const list = filteredQuestions();
+        const q = list[currentIndex];
+        if (!q) return;
+        q.question = els.editQuestion.value;
+        q.topic = els.editTopic.value.trim() || q.topic;
+        q.difficulty = Number(els.editDiff.value) || 1;
+        q.options = [els.editOpt0.value, els.editOpt1.value, els.editOpt2.value, els.editOpt3.value];
+        q.explain = els.editExplain.value;
+        persistAutosave();
+        els.promptPreview.innerHTML = renderMathHtml(q.question);
+        renderOptionsOnly(q);
+        els.explainBox.style.display = q.explain.trim() ? 'block' : 'none';
+        els.explainBox.innerHTML = `<strong>Lời giải:</strong> ${renderMathHtml(q.explain)}`;
+      }
+
+      function renderOptionsOnly(q) {
+        Array.from(els.optionsContainer.children).forEach((btn, idx) => {
+          btn.className = `opt-btn ${q.answer === idx ? 'is-correct' : ''}`;
+          btn.innerHTML = `<span class="badge">${LABELS[idx]}</span><span style="flex:1">${renderMathHtml(q.options[idx])}</span>`;
+        });
+      }
+
+      function setStatus(status, advance = false) {
+        const list = filteredQuestions();
+        const q = list[currentIndex];
+        if (!q) return;
+        q.status = status;
+        persistAutosave();
+        if (advance && currentIndex < list.length - 1) {
+          currentIndex += 1;
+        }
+        render();
+      }
+
+      function loadBankObject(obj, sourceLabel) {
+        if (!obj || !Array.isArray(obj.questions)) {
+          alert('File JSON không hợp lệ (thiếu mảng questions).');
+          return;
+        }
+        bank = obj;
+        currentIndex = 0;
+        populateTopics();
+        render();
+        els.saveToast.textContent = `Đã tải ${obj.questions.length} câu hỏi (${sourceLabel}).`;
+      }
+
+      // Event bindings
+      els.cropStage.addEventListener('click', () => {
+        els.cropStage.classList.toggle('zoomed');
+      });
+
+      document.querySelectorAll('#filterChips button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#filterChips button').forEach((b) => b.classList.remove('active-chip'));
+          btn.classList.add('active-chip');
+          filterMode = btn.dataset.filter;
+          currentIndex = 0;
+          render();
+        });
+      });
+
+      els.searchInput.addEventListener('input', () => {
+        searchTerm = els.searchInput.value;
+        currentIndex = 0;
+        render();
+      });
+
+      els.topicSelect.addEventListener('change', () => {
+        topicFilter = els.topicSelect.value;
+        currentIndex = 0;
+        render();
+      });
+
+      els.diffSelect.addEventListener('change', () => {
+        diffFilter = els.diffSelect.value;
+        currentIndex = 0;
+        render();
+      });
+
+      els.prevBtn.addEventListener('click', () => {
+        if (currentIndex > 0) {
+          currentIndex -= 1;
+          render();
+        }
+      });
+
+      els.nextBtn.addEventListener('click', () => {
+        const list = filteredQuestions();
+        if (currentIndex < list.length - 1) {
+          currentIndex += 1;
+          render();
+        }
+      });
+
+      els.markVerifiedBtn.addEventListener('click', () => setStatus('verified', true));
+      els.markReviewBtn.addEventListener('click', () => setStatus('needs_review', false));
+      els.toggleEditBtn.addEventListener('click', () => {
+        editing = !editing;
+        render();
+      });
+
+      [
+        els.editQuestion,
+        els.editTopic,
+        els.editDiff,
+        els.editOpt0,
+        els.editOpt1,
+        els.editOpt2,
+        els.editOpt3,
+        els.editExplain,
+      ].forEach((input) => input.addEventListener('input', applyInlineEdit));
+
+      els.fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        loadBankObject(JSON.parse(text), file.name);
+      });
+
+      window.addEventListener('dragover', (e) => e.preventDefault());
+      window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        loadBankObject(JSON.parse(text), file.name);
+      });
+
+      els.downloadBtn.addEventListener('click', () => {
+        if (!bank) return;
+        const blob = new Blob([JSON.stringify(bank, null, 2)], { type: 'application/json;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'questions.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        els.saveToast.textContent = 'Đã tải xuống file questions.json.';
+      });
+
+      els.saveServerBtn.addEventListener('click', async () => {
+        if (!bank) return;
+        try {
+          const res = await fetch('/__save_bank', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bank),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          els.saveToast.textContent = `✅ Đã lưu trực tiếp ${data.count} câu vào private/questions.json!`;
+        } catch (err) {
+          els.saveToast.textContent = `Không lưu trực tiếp được: ${err.message}`;
+        }
+      });
+
+      els.skippedBtn.addEventListener('click', () => {
+        els.skippedList.innerHTML = '';
+        if (!skippedInfo || !Array.isArray(skippedInfo.skipped)) {
+          els.skippedSummary.textContent = 'Chưa tải được skipped_report.json.';
+        } else {
+          els.skippedSummary.textContent = `Giữ ${skippedInfo.kept_count}/${skippedInfo.total_source} câu. Bỏ qua ${skippedInfo.skipped_count} câu (có hình vẽ, chọn nhiều đáp án, lỗi đề PDF hoặc mơ hồ toán học):`;
+          for (const item of skippedInfo.skipped) {
+            const div = document.createElement('div');
+            div.className = 'skip-item';
+            div.innerHTML = `<div class="between"><strong>${item.id} (Câu ${item.num})</strong><span class="badge">${item.reason}</span></div><div class="muted" style="font-size:0.86rem;margin-top:0.25rem">${escapeHtml(item.detail)}</div><img loading="lazy" src="../../private/crops/${item.id}.png" alt="${item.id}" />`;
+            els.skippedList.appendChild(div);
+          }
+        }
+        els.skippedDialog.showModal();
+      });
+
+      els.closeSkippedBtn.addEventListener('click', () => els.skippedDialog.close());
+
+      window.addEventListener('keydown', (e) => {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+          return;
+        }
+        if (els.skippedDialog.open) return;
+        const list = filteredQuestions();
+        const q = list[currentIndex];
+        if (!q) return;
+        const k = e.key.toLowerCase();
+        if (k === 'arrowleft' || k === 'k') {
+          if (currentIndex > 0) {
+            currentIndex -= 1;
+            render();
+          }
+        } else if (k === 'arrowright' || k === 'j') {
+          if (currentIndex < list.length - 1) {
+            currentIndex += 1;
+            render();
+          }
+        } else if (k === 'v') {
+          setStatus('verified', true);
+        } else if (k === 'r') {
+          setStatus('needs_review', false);
+        } else if (k === 'e') {
+          editing = !editing;
+          render();
+        } else if (k === '1' || k === 'a') {
+          q.answer = 0;
+          persistAutosave();
+          render();
+        } else if (k === '2' || k === 'b') {
+          q.answer = 1;
+          persistAutosave();
+          render();
+        } else if (k === '3' || k === 'c') {
+          q.answer = 2;
+          persistAutosave();
+          render();
+        } else if (k === '4' || k === 'd') {
+          q.answer = 3;
+          persistAutosave();
+          render();
+        }
+      });
+
+      // Auto-load when served from local HTTP (REVIEW.bat)
+      (async () => {
+        const isHttp = location.protocol.startsWith('http');
+        if (isHttp) {
+          els.saveServerBtn.style.display = 'inline-flex';
+        }
+        try {
+          const [bankRes, skipRes] = await Promise.all([
+            fetch('../../private/questions.json'),
+            fetch('../../private/draft/skipped_report.json'),
+          ]);
+          if (skipRes.ok) {
+            skippedInfo = await skipRes.json();
+            els.skippedBtn.textContent = `🚫 Câu đã bỏ qua (${skippedInfo.skipped_count})`;
+          }
+          if (bankRes.ok) {
+            const loaded = await bankRes.json();
+            loadBankObject(loaded, 'private/questions.json');
+            return;
+          }
+          const curatedRes = await fetch('../../data/questions.gt1_40.json');
+          if (curatedRes.ok) {
+            const loadedCurated = await curatedRes.json();
+            loadBankObject(loadedCurated, 'data/questions.gt1_40.json');
+            return;
+          }
+        } catch {
+          // fallback below
+        }
+        try {
+          const cached = localStorage.getItem(STORAGE_KEY);
+          if (cached) {
+            loadBankObject(JSON.parse(cached), 'bản lưu tạm trên trình duyệt');
+            return;
+          }
+        } catch {
+          // ignore
+        }
+        render();
+      })();
+    </script>
+  </body>
+</html>
