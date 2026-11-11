@@ -537,7 +537,7 @@ export class FirebaseHostSession {
       });
     } catch (err) {
       this.callbacks.onPeerError(
-        `Lỗi đồng bộ Firebase: ${err instanceof Error ? err.message : String(err)}`
+        `Lỗi đồng bộ trực tuyến: ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }

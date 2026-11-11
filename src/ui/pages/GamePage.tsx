@@ -231,7 +231,7 @@ export const GamePage: React.FC<GamePageProps> = ({
             </span>
           )}
           {mode !== 'hotseat' && (
-            <span className="badge">{transport === 'firebase' ? 'Firebase' : 'P2P'}</span>
+            <span className="badge">{transport === 'firebase' ? 'Online' : 'P2P'}</span>
           )}
           {viewerId === 'spectator' && <span className="badge">👀 Khán giả</span>}
           {roomCode && <span className="badge">Mã: {roomCode}</span>}

@@ -125,7 +125,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="brand">
           <span>♟️ Cờ Vua × Trắc Nghiệm</span>
           <span className="badge" style={{ borderColor: firebaseReady ? '#22c55e' : undefined }}>
-            {firebaseReady ? '🟢 Firebase Online & Rank' : 'Firebase & P2P'}
+            {firebaseReady ? '🟢 Trực tuyến & Rank' : 'Online & P2P'}
           </span>
         </div>
         <div className="row">
@@ -169,7 +169,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
 
           <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            Tự động ghép cặp trực tiếp qua Firebase, không cần mã phòng hay QR. Dùng bộ chuẩn{' '}
+            Tự động ghép cặp trực tiếp với người chơi online, không cần mã phòng hay QR. Dùng bộ chuẩn{' '}
             <strong>40 câu Giải tích 1</strong> để đảm bảo công bằng Rank.
           </p>
 
@@ -231,7 +231,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               style={{ marginTop: 'auto' }}
               onClick={() => onStartQuickMatch(clockSec)}
             >
-              {firebaseReady ? '⚡ Tìm trận Ranked ngay' : '⏳ Đang kết nối Firebase…'}
+              {firebaseReady ? '⚡ Tìm trận Ranked ngay' : '⏳ Đang kết nối máy chủ…'}
             </button>
           )}
 
@@ -258,7 +258,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             {leaderboard.length === 0 ? (
               <div className="muted" style={{ padding: '1rem', fontSize: '0.84rem', textAlign: 'center' }}>
                 {leaderboardLoading
-                  ? 'Đang tải bảng xếp hạng từ Firebase…'
+                  ? 'Đang tải bảng xếp hạng…'
                   : 'Chưa có trận Ranked nào hoàn tất. Hãy đấu Ghép trận nhanh để ghi tên lên bảng vàng!'}
               </div>
             ) : (
@@ -384,7 +384,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         <section className="panel col">
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>🔑 Tạo phòng riêng (Mã &amp; QR)</h2>
           <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
-            Tạo phòng giao hữu với bạn bè qua mã 6 ký tự &amp; QR Code (tối đa 5 khán giả, đồng bộ Firebase — tự chuyển P2P nếu cần).
+            Tạo phòng giao hữu với bạn bè qua mã 6 ký tự &amp; QR Code (tối đa 5 khán giả, đồng bộ trực tuyến — tự chuyển P2P nếu cần).
           </p>
 
           <div className="col" style={{ gap: '0.35rem' }}>

@@ -153,7 +153,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     let mounted = true;
     if (!hasFirebaseConfig()) {
-      setFirebaseStatusText('Chưa cấu hình Firebase — dùng chế độ P2P / 1 máy.');
+      setFirebaseStatusText('Chế độ trực tuyến tạm chưa bật — dùng P2P / 1 máy.');
       return;
     }
 
@@ -173,7 +173,7 @@ export const App: React.FC = () => {
         if (!mounted) return;
         setFirebaseReady(false);
         setFirebaseStatusText(
-          `Firebase tạm chưa kết nối (${err instanceof Error ? err.message : 'offline'}) — vẫn chơi P2P/1 máy bình thường.`
+          `Máy chủ tạm chưa kết nối (${err instanceof Error ? err.message : 'offline'}) — vẫn chơi P2P/1 máy bình thường.`
         );
       }
     })();
@@ -435,7 +435,7 @@ export const App: React.FC = () => {
         await fh.start();
       } catch (err) {
         showToast(
-          `Không tạo được phòng Firebase (${err instanceof Error ? err.message : 'lỗi mạng'}) — chuyển sang P2P.`
+          `Không tạo được phòng trực tuyến (${err instanceof Error ? err.message : 'lỗi mạng'}) — chuyển sang P2P.`
         );
         startPeerJsHost(clockSeconds);
       }

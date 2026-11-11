@@ -66,7 +66,7 @@ export function timestampToMs(ts: unknown, fallback: number = Date.now()): numbe
 
 export function getFirebaseServices(): FirebaseServices {
   if (!hasFirebaseConfig()) {
-    throw new Error('Thiếu cấu hình Firebase.');
+    throw new Error('Thiếu cấu hình máy chủ.');
   }
   if (cachedServices) return cachedServices;
 

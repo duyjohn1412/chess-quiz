@@ -50,7 +50,7 @@ export const HostLobbyPage: React.FC<HostLobbyPageProps> = ({
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
-          <span>♟️ Phòng chờ Online ({transport === 'firebase' ? 'Firebase' : 'P2P'})</span>
+          <span>♟️ Phòng chờ Online ({transport === 'firebase' ? 'Online' : 'P2P'})</span>
           <span className="badge" style={{ fontSize: '1rem', letterSpacing: '0.12em', color: '#fbbf24' }}>
             {code}
           </span>
