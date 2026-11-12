@@ -216,7 +216,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                   🔍 Đang tìm đối thủ ({quickMatch.clockSeconds / 60} phút) — {quickMatch.elapsedSec}s
                 </strong>
                 <span className="muted" style={{ fontSize: '0.78rem' }}>
-                  Người chơi đang chờ cùng mức giờ: {quickMatch.queueCount}
+                  Đối thủ khác đang chờ cùng mức: {Math.max(0, quickMatch.queueCount - 1)} (tổng gồm bạn:{' '}
+                  {quickMatch.queueCount})
                 </span>
               </div>
               <button type="button" className="btn-danger" onClick={onCancelQuickMatch}>
