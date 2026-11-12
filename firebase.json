@@ -1,7 +1,17 @@
 {
   "auth": {
     "providers": {
-      "anonymous": true
+      "anonymous": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Chess x Quiz Admin",
+        "supportEmail": "banhtrang1x23@gmail.com",
+        "authorizedRedirectUris": [
+          "https://chess-quiz-9x4k2m.firebaseapp.com/__/auth/handler",
+          "https://duyjohn1412.github.io/chess-quiz-admin/",
+          "http://localhost:5173",
+          "http://localhost:4173"
+        ]
+      }
     }
   },
   "firestore": {

@@ -12,3 +12,4 @@ playwright-report/
 test-results/
 firebase-debug.log*
 .firebase/
+admin-app/

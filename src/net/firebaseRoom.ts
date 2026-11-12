@@ -15,7 +15,7 @@ import {
 import { CFG } from '../config/defaults';
 import { stockfishService } from '../analysis/stockfishWorker';
 import { GameCoordinator } from '../engine/gameCoordinator';
-import { GameEvent, GameOverInfo, PublicState, QuestionBank } from '../types/game';
+import { AdminCommand, GameEvent, GameOverInfo, PublicState, QuestionBank } from '../types/game';
 import { getFirebaseServices } from './firebaseClient';
 import { HostCallbacks } from './host';
 import { GuestCallbacks } from './guest';
@@ -113,18 +113,25 @@ export class FirebaseHostSession {
   private destroyed = false;
   private unsubRoom: Unsubscribe | null = null;
   private unsubActions: Unsubscribe | null = null;
+  private unsubAdminCmds: Unsubscribe | null = null;
   private tickTimer: number | null = null;
   private quickFallbackTimer: number | null = null;
 
   private seq = 0;
+  private adminSeq = 0;
   private lastProcessedActionSeq = 0;
+  private processedAdminCmdIds = new Set<string>();
   private rejectSeq = 0;
   private lastSyncAtMs = 0;
+  private lastAdminSyncAtMs = 0;
+  private adminWatchUntilMs = 0;
   private lastP2Signature = '';
   private lastSpecSignature = '';
+  private lastAdminSignature = '';
   private flushScheduled = false;
   private dirtyP2 = false;
   private dirtySpec = false;
+  private dirtyAdmin = false;
   private lastKnownPhase: PublicState['phase'] = 'LOBBY';
   private rankedClosedSynced = false;
   private pageHideHandler: (() => void) | null = null;
@@ -363,6 +370,34 @@ export class FirebaseHostSession {
       }
     });
 
+    // Lắng nghe lệnh quản trị (chỉ Admin được phép ghi theo firestore.rules)
+    this.unsubAdminCmds = onSnapshot(collection(db, 'rooms', this.code, 'admin_commands'), (snap) => {
+      if (this.destroyed) return;
+      for (const d of snap.docs) {
+        if (this.processedAdminCmdIds.has(d.id)) continue;
+        this.processedAdminCmdIds.add(d.id);
+        const cmd = d.data() as AdminCommand & { untilMs?: number };
+        void deleteDoc(d.ref).catch(() => {});
+
+        if (!cmd || typeof cmd.type !== 'string') continue;
+        if (cmd.type === 'WATCH_PING') {
+          this.adminWatchUntilMs = Math.max(
+            this.adminWatchUntilMs,
+            Number(cmd.untilMs || Date.now() + 30000)
+          );
+          this.markDirty('admin');
+          continue;
+        }
+        const applied = this.coordinator.applyAdminCommand(cmd);
+        if (applied) {
+          this.adminWatchUntilMs = Math.max(this.adminWatchUntilMs, Date.now() + 30000);
+          this.markDirty('p2');
+          if (this.spectatorCount > 0) this.markDirty('spectator');
+          this.markDirty('admin');
+        }
+      }
+    });
+
     // Vòng tick engine cục bộ 100ms
     this.tickTimer = window.setInterval(() => {
       if (!this.destroyed) this.coordinator.tick();
@@ -491,10 +526,31 @@ export class FirebaseHostSession {
         this.markDirty('spectator');
       }
     }
+
+    if (now < this.adminWatchUntilMs) {
+      const adminSnap = this.coordinator.getAdminSnapshot();
+      const adminSig = JSON.stringify([
+        sig,
+        adminSnap.p1.hand.map((h) => `${h.uid}:${h.cardId}:${h.level}`),
+        adminSnap.p2.hand.map((h) => `${h.uid}:${h.cardId}:${h.level}`),
+        adminSnap.p1.coins,
+        adminSnap.p2.coins,
+        adminSnap.p1.streak,
+        adminSnap.p2.streak,
+        adminSnap.quizInfo?.p1?.choice ?? null,
+        adminSnap.quizInfo?.p2?.choice ?? null,
+      ]);
+      const adminHeartbeatDue = now - this.lastAdminSyncAtMs >= 1500;
+      if (adminSig !== this.lastAdminSignature || adminHeartbeatDue) {
+        this.lastAdminSignature = adminSig;
+        this.markDirty('admin');
+      }
+    }
   }
 
-  private markDirty(channel: 'p2' | 'spectator'): void {
+  private markDirty(channel: 'p2' | 'spectator' | 'admin'): void {
     if (channel === 'p2') this.dirtyP2 = true;
+    else if (channel === 'admin') this.dirtyAdmin = true;
     else if (this.spectatorCount > 0) this.dirtySpec = true;
 
     if (!this.flushScheduled) {
@@ -512,7 +568,27 @@ export class FirebaseHostSession {
             void this.flushViewDoc('spectator');
           }
         }
+        if (this.dirtyAdmin) {
+          this.dirtyAdmin = false;
+          void this.flushAdminViewDoc();
+        }
       });
+    }
+  }
+
+  private async flushAdminViewDoc(): Promise<void> {
+    if (this.destroyed) return;
+    const { db } = getFirebaseServices();
+    const adminSnap = this.coordinator.getAdminSnapshot();
+    this.lastAdminSyncAtMs = Date.now();
+    try {
+      await setDoc(doc(db, 'rooms', this.code, 'views', 'admin'), {
+        seq: ++this.adminSeq,
+        adminJson: JSON.stringify(adminSnap),
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      // non-fatal if admin watch write fails
     }
   }
 
@@ -567,6 +643,7 @@ export class FirebaseHostSession {
     if (this.quickFallbackTimer !== null) clearTimeout(this.quickFallbackTimer);
     this.unsubRoom?.();
     this.unsubActions?.();
+    this.unsubAdminCmds?.();
     if (this.pageHideHandler) {
       window.removeEventListener('pagehide', this.pageHideHandler);
       this.pageHideHandler = null;

@@ -27,6 +27,8 @@ import { FullGameSnapshot, viewFor } from '../net/viewFor';
 import { QuizPayload, ResultPayload, ShopPayload } from '../net/protocol';
 import {
   ActiveEffect,
+  AdminCommand,
+  AdminGameSnapshot,
   Color,
   ForceMoveState,
   FreeM2Choice,
@@ -347,6 +349,175 @@ export class GameCoordinator {
 
   getViewFor(viewer: PlayerId | 'spectator'): PublicState {
     return viewFor(viewer, this.getSnapshot());
+  }
+
+  getAdminSnapshot(): AdminGameSnapshot {
+    const mapPlayer = (p: PlayerState) => ({
+      id: p.id,
+      name: p.name,
+      elo: p.elo,
+      color: p.color,
+      clockMs: p.clockMs,
+      freezeRemainingMs: p.freezeRemainingMs,
+      coins: p.coins,
+      streak: p.streak,
+      hand: p.hand.map((h) => ({ ...h })),
+      connected: p.connected,
+    });
+    const mapQuiz = (slot: PlayerQuizSlot | null) =>
+      slot
+        ? {
+            qid: slot.qid,
+            prompt: slot.prompt,
+            correctIndex: slot.correctShownIndex,
+            correctText: slot.options[slot.correctShownIndex] ?? '',
+            choice: slot.choice,
+            isCorrect: slot.isCorrect,
+          }
+        : null;
+
+    return {
+      phase: this.phase,
+      hostNow: this.nowFn(),
+      clockSeconds: this.clockSeconds,
+      fen: this.chess.getFen(),
+      turn: this.chess.getTurn(),
+      lastMove: this.lastMove,
+      ply: this.ply,
+      phaseDeadlineAt: this.phaseDeadlineAt,
+      activeEffects: this.activeEffects.map((e) => ({ ...e })),
+      pendingHarmful: this.pendingHarmful ? { ...this.pendingHarmful } : null,
+      forceMove: this.forceMove ? { ...this.forceMove } : null,
+      drawOfferBy: this.drawOfferBy,
+      p1: mapPlayer(this.p1),
+      p2: mapPlayer(this.p2),
+      quizInfo:
+        this.phase === 'QUIZ' || this.phase === 'RESULT'
+          ? { p1: mapQuiz(this.quizSlots.p1), p2: mapQuiz(this.quizSlots.p2) }
+          : null,
+      events: this.events.slice(-20),
+      gameOver: this.gameOverInfo,
+    };
+  }
+
+  applyAdminCommand(cmd: AdminCommand): boolean {
+    const now = this.nowFn();
+    switch (cmd.type) {
+      case 'WATCH_PING':
+        return true;
+      case 'ADJUST_CLOCK': {
+        if (this.phase === 'GAME_OVER') return false;
+        const p = this.getPlayer(cmd.target);
+        p.clockMs = Math.max(0, Math.round(p.clockMs + cmd.deltaSec * 1000));
+        if (p.clockMs === 0 && this.phase === 'PLAYING') {
+          this.finishGame(this.chess.resolveTimeoutWinner(p.color), 'timeout');
+        } else {
+          this.hooks.onStateChange?.();
+        }
+        return true;
+      }
+      case 'FREEZE_CLOCK': {
+        if (this.phase === 'GAME_OVER') return false;
+        const p = this.getPlayer(cmd.target);
+        p.freezeRemainingMs = Math.max(0, p.freezeRemainingMs + Math.round(cmd.seconds * 1000));
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'ADJUST_COINS': {
+        const p = this.getPlayer(cmd.target);
+        p.coins = Math.max(0, Math.round(p.coins + cmd.delta));
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'SET_STREAK': {
+        const p = this.getPlayer(cmd.target);
+        p.streak = Math.max(0, Math.round(cmd.streak));
+        if (p.streak < 5) p.streak5Granted = false;
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'GIVE_CARD': {
+        try {
+          getCardDef(cmd.cardId);
+        } catch {
+          return false;
+        }
+        const p = this.getPlayer(cmd.target);
+        if (p.hand.length >= CFG.handMax) {
+          p.hand.pop();
+        }
+        p.hand.push({ uid: this.nextUid('adm'), cardId: cmd.cardId, level: cmd.level });
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'REMOVE_CARD': {
+        const p = this.getPlayer(cmd.target);
+        p.hand = p.hand.filter((h) => h.uid !== cmd.uid);
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'TRIGGER_FLASH': {
+        const cnt = Math.max(1, Math.min(8, Math.round(cmd.count || 1)));
+        const flashEv: GameEvent = {
+          id: this.nextUid('ev'),
+          at: now,
+          kind: 'flash',
+          message: `💥 Flash (${cnt} lần)!`,
+          target: cmd.target,
+          flashCount: cnt,
+        };
+        this.events.push(flashEv);
+        if (this.events.length > 40) this.events.shift();
+        this.hooks.onEvent?.(cmd.target, flashEv);
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'TRIGGER_QUIZ_NOW': {
+        if (this.phase !== 'PLAYING' && this.phase !== 'PRE_QUIZ') return false;
+        this.pendingHarmful = null;
+        this.forceMove = null;
+        this.enterQuizPhase(now);
+        return true;
+      }
+      case 'SKIP_TO_PLAYING': {
+        if (this.phase === 'LOBBY' || this.phase === 'GAME_OVER') return false;
+        this.phase = 'PLAYING';
+        this.phaseDeadlineAt = null;
+        this.pendingHarmful = null;
+        this.quizSlots = { p1: null, p2: null };
+        this.quizQuestionMeta = { p1: null, p2: null };
+        this.shops = { p1: null, p2: null };
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'FORCE_MOVE': {
+        if (this.phase !== 'PLAYING') return false;
+        const limitMs = Math.max(3, Math.round(cmd.seconds || 10)) * 1000;
+        this.forceMove = {
+          target: cmd.target,
+          limitMs,
+          startedAt: now,
+          deadlineAt: now + limitMs,
+        };
+        this.hooks.onStateChange?.();
+        return true;
+      }
+      case 'MAKE_MOVE': {
+        if (this.phase !== 'PLAYING') return false;
+        const turnPid = this.getPlayerByColor(this.chess.getTurn()).id;
+        return this.handleMove(turnPid, cmd.from, cmd.to, cmd.promo);
+      }
+      case 'FORCE_GAME_OVER': {
+        if (this.phase === 'GAME_OVER') return false;
+        this.finishGame(
+          cmd.winner,
+          cmd.reason ?? (cmd.winner === 'draw' ? 'draw_agreement' : 'resign')
+        );
+        return true;
+      }
+      default:
+        return false;
+    }
   }
 
   getShopFor(playerId: PlayerId): ShopPayload | null {

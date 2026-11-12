@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChessGame } from '../../src/engine/chessGame';
+import { GameCoordinator } from '../../src/engine/gameCoordinator';
+import { SAMPLE_BANK } from '../../src/quiz/bankLoader';
 import {
   applyForceMovePenalty,
   applyTimeBonus,
@@ -99,5 +101,41 @@ describe('Engine core modules', () => {
     const sReset = updateStreak(s.streak, s.streak5Granted, false);
     expect(sReset.streak).toBe(0);
     expect(sReset.streak5Granted).toBe(false);
+  });
+
+  it('admin commands: chỉnh giờ, đóng băng, xu, streak, tặng/xóa thẻ, đi hộ & kết thúc ván', () => {
+    let now = 1_000_000;
+    const coord = new GameCoordinator({
+      clockSeconds: 300,
+      bank: SAMPLE_BANK,
+      now: () => now,
+      rng: () => 0.1, // p1 = w, p2 = b
+    });
+    coord.startGame({ p1: 'w', p2: 'b' });
+
+    expect(coord.applyAdminCommand({ type: 'ADJUST_CLOCK', target: 'p1', deltaSec: -30 })).toBe(true);
+    expect(coord.applyAdminCommand({ type: 'FREEZE_CLOCK', target: 'p2', seconds: 10 })).toBe(true);
+    expect(coord.applyAdminCommand({ type: 'ADJUST_COINS', target: 'p1', delta: 75 })).toBe(true);
+    expect(coord.applyAdminCommand({ type: 'SET_STREAK', target: 'p1', streak: 4 })).toBe(true);
+    expect(coord.applyAdminCommand({ type: 'GIVE_CARD', target: 'p1', cardId: 'q_flash', level: 4 })).toBe(true);
+
+    let snap = coord.getAdminSnapshot();
+    expect(snap.p1.clockMs).toBe(270_000);
+    expect(snap.p2.freezeRemainingMs).toBe(10_000);
+    expect(snap.p1.coins).toBe(75);
+    expect(snap.p1.streak).toBe(4);
+    expect(snap.p1.hand).toHaveLength(1);
+
+    const cardUid = snap.p1.hand[0].uid;
+    expect(coord.applyAdminCommand({ type: 'REMOVE_CARD', target: 'p1', uid: cardUid })).toBe(true);
+    expect(coord.getAdminSnapshot().p1.hand).toHaveLength(0);
+
+    expect(coord.applyAdminCommand({ type: 'MAKE_MOVE', from: 'e2', to: 'e4' })).toBe(true);
+    expect(coord.getAdminSnapshot().turn).toBe('b');
+
+    expect(coord.applyAdminCommand({ type: 'FORCE_GAME_OVER', winner: 'w', reason: 'resign' })).toBe(true);
+    snap = coord.getAdminSnapshot();
+    expect(snap.phase).toBe('GAME_OVER');
+    expect(snap.gameOver?.winner).toBe('w');
   });
 });

@@ -76,8 +76,8 @@ service cloud.firestore {
     //   - updatedAt: timestamp (== request.time)
     //
     // Subcollection: rooms/{code}/views/{channel}
-    // Document ID: 'p2' | 'spectator'
-    // Fields (9 required, strict schema):
+    // Document ID: 'p2' | 'spectator' | 'admin'
+    // Fields for 'p2' | 'spectator' (9 required, strict schema):
     //   - seq: int (>= 1)
     //   - stateJson: string (2..32768 chars)
     //   - quizJson: string (0..8192 chars)
@@ -86,6 +86,10 @@ service cloud.firestore {
     //   - eventJson: string (0..4096 chars)
     //   - rejectJson: string (0..1024 chars)
     //   - gameOverJson: string (0..8192 chars)
+    //   - updatedAt: timestamp (== request.time)
+    // Fields for 'admin' (3 required, strict schema, readable ONLY by Admin):
+    //   - seq: int (>= 1)
+    //   - adminJson: string (2..65536 chars)
     //   - updatedAt: timestamp (== request.time)
     //
     // Subcollection: rooms/{code}/actions/{actionId}
@@ -96,6 +100,14 @@ service cloud.firestore {
     //   - payloadJson: string (2..2048 chars)
     //   - createdAt: timestamp (== request.time)
     //
+    // Subcollection: rooms/{code}/admin_commands/{cmdId}
+    // Document ID: Command ID
+    // Access: Admin read/write; Room Host read/delete only.
+    //
+    // Collection: admin_logs/{logId}
+    // Document ID: Log entry ID
+    // Access: Admin read/write only.
+    //
     // ===============================================================
 
     // ===============================================================
@@ -104,6 +116,13 @@ service cloud.firestore {
 
     function isAuthenticated() {
       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.firebase.sign_in_provider == 'google.com' &&
+        request.auth.token.email == 'banhtrang1x23@gmail.com' &&
+        request.auth.token.email_verified == true;
     }
 
     function isOwner(userId) {
@@ -599,6 +618,17 @@ service cloud.firestore {
         data.updatedAt is timestamp && data.updatedAt == request.time;
     }
 
+    function adminViewFields() {
+      return ['seq', 'adminJson', 'updatedAt'];
+    }
+
+    function isValidAdminViewDoc(data) {
+      return hasExactFields(data, adminViewFields()) &&
+        data.seq is int && data.seq >= 1 &&
+        data.adminJson is string && data.adminJson.size() >= 2 && data.adminJson.size() <= 65536 &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
     function canReadViewChannel(code, channel) {
       let room = getRoomDoc(code);
       return isAuthenticated() &&
@@ -667,6 +697,7 @@ service cloud.firestore {
           isValidPlayerRankedCommit(resource.data, request.resource.data, uid)
         );
       allow delete: if false;
+      allow read, create, update, delete: if isAdmin();
     }
 
     // Quick-match matchmaking queue tickets
@@ -683,6 +714,7 @@ service cloud.firestore {
           (!isOwner(uid) && uidNotModified() && isValidQueueOpponentClaim(resource.data, request.resource.data, uid))
         );
       allow delete: if isOwner(uid);
+      allow read, create, update, delete: if isAdmin();
     }
 
     // Game rooms (lookup by room code only; listing disabled to prevent scraping)
@@ -699,18 +731,22 @@ service cloud.firestore {
           isValidRoomSpectatorJoin(resource.data, request.resource.data)
         );
       allow delete: if false;
+      allow read, create, update, delete: if isAdmin();
 
-      // Host-published state views for Guest ('p2') and Spectators ('spectator')
+      // Host-published state views for Guest ('p2'), Spectators ('spectator'), and Admin ('admin')
       match /views/{channel} {
         allow get: if canReadViewChannel(code, channel);
         allow list: if false;
-        allow create: if channel in ['p2', 'spectator'] &&
-          isRoomHost(code) &&
-          isValidViewDoc(request.resource.data);
-        allow update: if channel in ['p2', 'spectator'] &&
-          isRoomHost(code) &&
-          isValidViewDoc(request.resource.data);
+        allow create: if isRoomHost(code) && (
+          (channel in ['p2', 'spectator'] && isValidViewDoc(request.resource.data)) ||
+          (channel == 'admin' && isValidAdminViewDoc(request.resource.data))
+        );
+        allow update: if isRoomHost(code) && (
+          (channel in ['p2', 'spectator'] && isValidViewDoc(request.resource.data)) ||
+          (channel == 'admin' && isValidAdminViewDoc(request.resource.data))
+        );
         allow delete: if false;
+        allow read, write: if isAdmin();
       }
 
       // Guest -> Host action queue
@@ -723,7 +759,19 @@ service cloud.firestore {
           isValidActionDoc(request.resource.data);
         allow update: if false;
         allow delete: if isRoomHost(code);
+        allow read, write: if isAdmin();
       }
+
+      // Admin -> Host remote command queue
+      match /admin_commands/{cmdId} {
+        allow read, write: if isAdmin();
+        allow read, delete: if isRoomHost(code);
+      }
+    }
+
+    // Admin audit logs (restricted exclusively to verified Google Admin)
+    match /admin_logs/{logId} {
+      allow read, write: if isAdmin();
     }
 
     // Default deny catch-all

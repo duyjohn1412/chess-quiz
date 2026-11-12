@@ -258,3 +258,63 @@ export interface PublicState {
   weakTopicHint: string | null;
   analysisHint: { bestMove?: { from: string; to: string }; candidates?: { from: string; to: string }[] } | null;
 }
+
+export type AdminCommand =
+  | { type: 'WATCH_PING'; untilMs: number }
+  | { type: 'ADJUST_CLOCK'; target: PlayerId; deltaSec: number }
+  | { type: 'FREEZE_CLOCK'; target: PlayerId; seconds: number }
+  | { type: 'ADJUST_COINS'; target: PlayerId; delta: number }
+  | { type: 'SET_STREAK'; target: PlayerId; streak: number }
+  | { type: 'GIVE_CARD'; target: PlayerId; cardId: string; level: CardLevel }
+  | { type: 'REMOVE_CARD'; target: PlayerId; uid: string }
+  | { type: 'TRIGGER_FLASH'; target: PlayerId; count: number }
+  | { type: 'TRIGGER_QUIZ_NOW' }
+  | { type: 'SKIP_TO_PLAYING' }
+  | { type: 'FORCE_MOVE'; target: PlayerId; seconds: number }
+  | { type: 'MAKE_MOVE'; from: string; to: string; promo?: 'q' | 'r' | 'b' | 'n' }
+  | { type: 'FORCE_GAME_OVER'; winner: Color | 'draw'; reason?: GameOverInfo['reason'] };
+
+export interface AdminPlayerSnapshot {
+  id: PlayerId;
+  name: string;
+  elo?: number;
+  color: Color;
+  clockMs: number;
+  freezeRemainingMs: number;
+  coins: number;
+  streak: number;
+  hand: HeldCard[];
+  connected: boolean;
+}
+
+export interface AdminQuizSlotSummary {
+  qid: string;
+  prompt: string;
+  correctIndex: number;
+  correctText: string;
+  choice: number | null;
+  isCorrect: boolean | null;
+}
+
+export interface AdminGameSnapshot {
+  phase: GamePhase;
+  hostNow: number;
+  clockSeconds: number;
+  fen: string;
+  turn: Color;
+  lastMove: { from: string; to: string } | null;
+  ply: number;
+  phaseDeadlineAt: number | null;
+  activeEffects: ActiveEffect[];
+  pendingHarmful: PendingHarmful | null;
+  forceMove: ForceMoveState | null;
+  drawOfferBy: PlayerId | null;
+  p1: AdminPlayerSnapshot;
+  p2: AdminPlayerSnapshot;
+  quizInfo: {
+    p1: AdminQuizSlotSummary | null;
+    p2: AdminQuizSlotSummary | null;
+  } | null;
+  events: GameEvent[];
+  gameOver: GameOverInfo | null;
+}
