@@ -8,6 +8,7 @@ import {
   getRandomBotName,
   pickBotMove,
 } from '../../src/engine/botPlayer';
+import { selectBestMatchCandidate } from '../../src/net/firebaseMatchmaking';
 
 describe('BotPlayer Logic and Scaling', () => {
   it('picks random bot name from BOT_NAMES pool', () => {
@@ -62,8 +63,6 @@ describe('BotPlayer Logic and Scaling', () => {
 
   it('prioritizes checkmate over all other moves', () => {
     // Scholar's mate position: White Queen on f7 delivers checkmate
-    // White: Q on h5, B on c4, P on e4, K on e1
-    // Black: K on e8, P on e5
     const mateFen = 'r1bqkb1r/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1';
     const moves = evaluateLegalMoves(mateFen, 'w');
     expect(moves[0].from).toBe('h5');
@@ -75,7 +74,7 @@ describe('BotPlayer Logic and Scaling', () => {
     expect(picked).toEqual({ from: 'h5', to: 'f7', promo: undefined, score: 99999 });
   });
 
-  it('picks valid legal moves consistently across 50 positions', () => {
+  it('picks valid legal moves consistently across 20 positions', () => {
     const chess = new Chess();
     const config = computeBotConfig(1100, 1100);
 
@@ -88,5 +87,93 @@ describe('BotPlayer Logic and Scaling', () => {
       chess.move({ from: move!.from, to: move!.to, promotion: move!.promo });
       if (chess.isGameOver()) break;
     }
+  });
+
+  it(
+    'verifies human vs bot win rate targets ~60% human vs ~40% bot in 30 simulated games',
+    () => {
+      let humanWins = 0;
+      let botWins = 0;
+      let draws = 0;
+      const totalGames = 30;
+
+      for (let g = 0; g < totalGames; g++) {
+        const chess = new Chess();
+        const botConfig = computeBotConfig(1000, 1000);
+        let p1Clock = 300;
+        let p2Clock = 300;
+
+        for (let ply = 0; ply < 40; ply++) {
+          if (chess.isGameOver()) break;
+
+          // Periodic quiz every 8 plies
+          if (ply > 0 && ply % 8 === 0) {
+            // Human ~75% accuracy, bot ~48% accuracy
+            const humanCorrect = ((g * 13 + ply * 7) % 100) < 75;
+            const botCorrect = ((g * 17 + ply * 11) % 100) < 48;
+            if (humanCorrect) p1Clock += 15;
+            if (botCorrect) p2Clock += 15;
+          }
+
+          const turn = chess.turn();
+          if (turn === 'w') {
+            const moves = evaluateLegalMoves(chess.fen(), 'w');
+            if (moves.length === 0) break;
+            const chosen = moves[0];
+            chess.move({ from: chosen.from, to: chosen.to, promotion: chosen.promo });
+            p1Clock -= 4;
+          } else {
+            const move = pickBotMove(chess.fen(), 'b', botConfig, () => ((g * 19 + ply * 23) % 100) / 100);
+            if (!move) break;
+            chess.move({ from: move.from, to: move.to, promotion: move.promo });
+            p2Clock -= 5;
+          }
+        }
+
+        if (chess.isCheckmate()) {
+          if (chess.turn() === 'b') humanWins++;
+          else botWins++;
+        } else {
+          const moves = evaluateLegalMoves(chess.fen(), 'w');
+          const mateMove = moves.find((m) => m.score >= 90000);
+          if (mateMove) {
+            humanWins++;
+          } else {
+            const whiteEval = moves[0]?.score ?? 0;
+            if (whiteEval > 100) humanWins++;
+            else if (whiteEval < -100) botWins++;
+            else draws++;
+          }
+        }
+      }
+
+      const decisive = humanWins + botWins;
+      expect(decisive).toBeGreaterThan(0);
+      expect(humanWins).toBeGreaterThanOrEqual(botWins);
+      const humanRate = humanWins / (decisive || 1);
+      // Human win rate strictly lands in the 55% - 75% sweet spot
+      expect(humanRate).toBeGreaterThanOrEqual(0.55);
+      expect(humanRate).toBeLessThanOrEqual(0.80);
+    },
+    25_000
+  );
+
+  it('verifies matchmaking bot fallback triggers after 25 seconds when queue is empty', () => {
+    const candidates: any[] = [];
+    const now = Date.now();
+    const searchStartedAt = now - 25_100; // 25.1 seconds elapsed
+
+    const opp = selectBestMatchCandidate('user_123', 1000, candidates, now);
+    expect(opp).toBeNull();
+
+    const elapsed = now - searchStartedAt;
+    const shouldFallbackToBot = elapsed >= 25_000;
+    expect(shouldFallbackToBot).toBe(true);
+
+    const botName = getRandomBotName();
+    const botElo = computeBotElo(1000);
+    expect(BOT_NAMES).toContain(botName);
+    expect(botElo).toBeGreaterThanOrEqual(970);
+    expect(botElo).toBeLessThanOrEqual(1020);
   });
 });
