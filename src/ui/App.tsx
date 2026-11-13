@@ -566,6 +566,10 @@ export const App: React.FC = () => {
           p2Elo: match.guestElo,
           committed: false,
         };
+        const isBot = match.guestUid.startsWith('bot_') || Boolean(match.isBot);
+        if (isBot) {
+          showToast(`⚡ Ghép trận với ${match.guestName} (${match.guestElo} Elo)`);
+        }
         const fh = new FirebaseHostSession({
           mode: 'quick',
           existingCode: match.roomCode,
@@ -577,6 +581,13 @@ export const App: React.FC = () => {
           guestElo: match.guestElo,
           clockSeconds: match.clockSeconds,
           bank: DEFAULT_BANK,
+          botOpponent: isBot
+            ? {
+                uid: match.guestUid,
+                name: match.guestName,
+                elo: match.guestElo,
+              }
+            : undefined,
           callbacks: {
             onRoomReady: (c) => setRoomCode(c),
             onPeerError: (msg) => showToast(msg),

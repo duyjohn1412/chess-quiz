@@ -15,6 +15,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { DEFAULT_BANK } from '../quiz/bankLoader';
+import { computeBotElo, getRandomBotName } from '../engine/botPlayer';
 import { getFirebaseServices, timestampToMs } from './firebaseClient';
 import { generateQuickRoomCode } from './roomCode';
 
@@ -44,6 +45,7 @@ export interface QuickMatchAssigned {
   guestName: string;
   guestElo: number;
   clockSeconds: 180 | 300 | 600;
+  isBot?: boolean;
 }
 
 export interface QuickMatchCallbacks {
@@ -53,6 +55,7 @@ export interface QuickMatchCallbacks {
 }
 
 const STALE_QUEUE_MS = 22_000;
+export const BOT_MATCH_DELAY_MS = 25_000;
 
 export function selectBestMatchCandidate(
   selfUid: string,
@@ -89,6 +92,7 @@ export class QuickMatchController {
   private unsubSelf: Unsubscribe | null = null;
   private pollTimer: number | null = null;
   private heartbeatTimer: number | null = null;
+  private botFallbackTimer: number | null = null;
   private unloadHandler: (() => void) | null = null;
 
   constructor(opts: {
@@ -148,6 +152,7 @@ export class QuickMatchController {
         const peerUid = String(d.peerUid ?? '');
         const peerName = String(d.peerName ?? 'Đối thủ');
         const peerElo = Number(d.peerElo ?? 1000);
+        const isBot = peerUid.startsWith('bot_');
         const match: QuickMatchAssigned = isHost
           ? {
               roomCode: d.roomCode,
@@ -159,6 +164,7 @@ export class QuickMatchController {
               guestName: peerName,
               guestElo: peerElo,
               clockSeconds: this.clockSeconds,
+              isBot,
             }
           : {
               roomCode: d.roomCode,
@@ -170,6 +176,7 @@ export class QuickMatchController {
               guestName: this.name,
               guestElo: this.elo,
               clockSeconds: this.clockSeconds,
+              isBot,
             };
 
         this.cleanupInternal(true);
@@ -187,6 +194,11 @@ export class QuickMatchController {
     this.pollTimer = window.setInterval(() => {
       void this.scanAndPair();
     }, 2200);
+
+    // Sau đúng 25s nếu chưa có ai ghép thì kích hoạt ghép Bot
+    this.botFallbackTimer = window.setTimeout(() => {
+      void this.scanAndPair();
+    }, BOT_MATCH_DELAY_MS);
 
     // Giữ heartbeat hàng đợi mỗi 7s
     this.heartbeatTimer = window.setInterval(() => {
@@ -233,7 +245,13 @@ export class QuickMatchController {
       }
 
       const opp = selectBestMatchCandidate(this.uid, this.elo, tickets, now);
-      if (!opp || !this.active || this.matchedHandled) return;
+      if (!opp) {
+        if (now - this.searchStartedAt >= BOT_MATCH_DELAY_MS && this.active && !this.matchedHandled) {
+          await this.pairWithBot();
+        }
+        return;
+      }
+      if (!this.active || this.matchedHandled) return;
 
       // Tie-breaker tránh 2 bên đồng thời mở 2 phòng: uid nhỏ hơn chủ động tạo trước; người mở giao dịch làm Chủ phòng (hostUid)
       if (this.uid > opp.uid && now - this.searchStartedAt < 1600) {
@@ -320,12 +338,76 @@ export class QuickMatchController {
     }
   }
 
+  private async pairWithBot(): Promise<void> {
+    if (!this.active || this.matchedHandled) return;
+    const { db } = getFirebaseServices();
+    const botName = getRandomBotName();
+    const botElo = computeBotElo(this.elo);
+    const botUid = `bot_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const roomCode = generateQuickRoomCode();
+    const myRef = doc(db, 'queue', this.uid);
+    const roomRef = doc(db, 'rooms', roomCode);
+
+    try {
+      await runTransaction(db, async (tx) => {
+        const mySnap = await tx.get(myRef);
+        if (!mySnap.exists()) throw new Error('TICKET_GONE');
+        const m = mySnap.data() as Record<string, unknown>;
+        if (m.status !== 'WAITING') throw new Error('ALREADY_MATCHED');
+
+        tx.set(roomRef, {
+          code: roomCode,
+          mode: 'quick',
+          isRanked: true,
+          phase: 'LOBBY',
+          clockSeconds: this.clockSeconds,
+          hostUid: this.uid,
+          hostName: this.name,
+          hostElo: this.elo,
+          guestUid: botUid,
+          guestName: botName,
+          guestElo: botElo,
+          spectatorUids: [],
+          status: 'ACTIVE',
+          winner: null,
+          actionSeqAck: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        tx.update(myRef, {
+          status: 'MATCHED',
+          roomCode,
+          hostUid: this.uid,
+          peerUid: botUid,
+          peerName: botName,
+          peerElo: botElo,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg === 'TICKET_GONE' ||
+        msg === 'ALREADY_MATCHED' ||
+        msg.includes('aborted due to cross-transaction')
+      ) {
+        return;
+      }
+      if (this.active && !this.matchedHandled) {
+        this.callbacks.onError(`Lỗi ghép với Bot: ${msg}`);
+      }
+    }
+  }
+
   private cleanupInternal(deleteOwnTicket: boolean): void {
     this.active = false;
     if (this.pollTimer !== null) clearInterval(this.pollTimer);
     if (this.heartbeatTimer !== null) clearInterval(this.heartbeatTimer);
+    if (this.botFallbackTimer !== null) clearTimeout(this.botFallbackTimer);
     this.pollTimer = null;
     this.heartbeatTimer = null;
+    this.botFallbackTimer = null;
     this.unsubSelf?.();
     this.unsubSelf = null;
     if (this.unloadHandler) {

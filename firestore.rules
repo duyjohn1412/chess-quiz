@@ -519,6 +519,20 @@ service cloud.firestore {
         guestQueueAfter.data.peerUid == request.auth.uid;
     }
 
+    function isValidBotMatchPairing(data, code) {
+      let hostQueueBefore = get(/databases/$(database)/documents/queue/$(request.auth.uid));
+      let hostQueueAfter = getAfter(/databases/$(database)/documents/queue/$(request.auth.uid));
+      return hostQueueBefore != null &&
+        hostQueueBefore.data.status == 'WAITING' &&
+        hostQueueBefore.data.clockSeconds == data.clockSeconds &&
+        hostQueueAfter != null &&
+        hostQueueAfter.data.status == 'MATCHED' &&
+        hostQueueAfter.data.roomCode == code &&
+        hostQueueAfter.data.hostUid == request.auth.uid &&
+        hostQueueAfter.data.peerUid == data.guestUid &&
+        data.guestUid.matches('^bot_[A-Za-z0-9_.-]+$');
+    }
+
     function isValidRoomCreate(data, code) {
       return isValidRoom(data, code) &&
         data.hostUid == request.auth.uid &&
@@ -540,7 +554,7 @@ service cloud.firestore {
             data.status == 'ACTIVE' &&
             data.guestUid is string &&
             data.guestUid != request.auth.uid &&
-            isValidQuickMatchPairing(data, code)
+            (isValidQuickMatchPairing(data, code) || isValidBotMatchPairing(data, code))
           )
         );
     }

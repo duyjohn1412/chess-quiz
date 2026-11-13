@@ -15,6 +15,7 @@ import {
 import { CFG } from '../config/defaults';
 import { stockfishService } from '../analysis/stockfishWorker';
 import { GameCoordinator } from '../engine/gameCoordinator';
+import { BotPlayer } from '../engine/botPlayer';
 import { AdminCommand, GameEvent, GameOverInfo, PublicState, QuestionBank } from '../types/game';
 import { getFirebaseServices } from './firebaseClient';
 import { HostCallbacks } from './host';
@@ -51,6 +52,11 @@ export interface FirebaseHostOptions {
   clockSeconds: 180 | 300 | 600;
   bank: QuestionBank;
   callbacks: HostCallbacks;
+  botOpponent?: {
+    uid: string;
+    name: string;
+    elo: number;
+  };
 }
 
 function buildStateSignature(s: PublicState): string {
@@ -111,6 +117,7 @@ export class FirebaseHostSession {
   private spectatorCount = 0;
   private guestAttached = false;
   private destroyed = false;
+  private botPlayer: BotPlayer | null = null;
   private unsubRoom: Unsubscribe | null = null;
   private unsubActions: Unsubscribe | null = null;
   private unsubAdminCmds: Unsubscribe | null = null;
@@ -246,6 +253,19 @@ export class FirebaseHostSession {
 
     if (opts.mode === 'quick') {
       this.coordinator.setPlayerConnected('p2', true);
+    }
+
+    if (opts.botOpponent) {
+      this.botPlayer = new BotPlayer({
+        botId: 'p2',
+        botName: opts.botOpponent.name,
+        botElo: opts.botOpponent.elo,
+        playerElo: opts.hostElo,
+        coordinator: this.coordinator,
+      });
+      this.guestAttached = true;
+      this.coordinator.setPlayerConnected('p2', true);
+      this.coordinator.setPlayerReady('p2', true);
     }
   }
 
@@ -412,8 +432,15 @@ export class FirebaseHostSession {
     };
     window.addEventListener('pagehide', this.pageHideHandler);
 
-    // Ở Ghép trận nhanh: tự bắt đầu ngay khi Guest READY hoặc chậm nhất sau 2.5s
-    if (this.mode === 'quick') {
+    // Ở Ghép trận nhanh: tự bắt đầu ngay khi Guest READY hoặc chậm nhất sau 2.5s (hoặc 400ms nếu là Bot)
+    if (this.botPlayer) {
+      this.botPlayer.start();
+      window.setTimeout(() => {
+        if (!this.destroyed && this.coordinator.getPhase() === 'LOBBY') {
+          this.coordinator.startGame();
+        }
+      }, 400);
+    } else if (this.mode === 'quick') {
       this.quickFallbackTimer = window.setTimeout(() => {
         if (!this.destroyed && this.coordinator.getPhase() === 'LOBBY') {
           this.coordinator.startGame();
@@ -482,6 +509,8 @@ export class FirebaseHostSession {
 
   private onCoordinatorStateChange(): void {
     if (this.destroyed) return;
+    this.botPlayer?.onStateChange();
+
     const p1View = this.coordinator.getViewFor('p1');
     this.callbacks.onHostState(p1View);
 
@@ -639,6 +668,10 @@ export class FirebaseHostSession {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    if (this.botPlayer !== null) {
+      this.botPlayer.destroy();
+      this.botPlayer = null;
+    }
     if (this.tickTimer !== null) clearInterval(this.tickTimer);
     if (this.quickFallbackTimer !== null) clearTimeout(this.quickFallbackTimer);
     this.unsubRoom?.();

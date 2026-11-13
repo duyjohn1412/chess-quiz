@@ -550,6 +550,10 @@ export class GameCoordinator {
     };
   }
 
+  getCorrectAnswerIndex(playerId: PlayerId): number | null {
+    return this.quizSlots[playerId]?.correctShownIndex ?? null;
+  }
+
   private pushPublicEvent(
     kind: GameEvent['kind'],
     message: string,
