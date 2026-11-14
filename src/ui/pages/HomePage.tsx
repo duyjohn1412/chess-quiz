@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { Check, Copy, LogIn, ShieldCheck, Snowflake, Sparkles, UserPlus } from 'lucide-react';
 import {
   BUILTIN_BANKS,
   DEFAULT_BANK,
@@ -12,7 +13,7 @@ import { extractCodeFromInput } from '../../net/roomCode';
 import { getRankTier, RankProfile } from '../../rank/rankSystem';
 import { QuestionBank } from '../../types/game';
 import { QrScannerModal } from '../components/QrScannerModal';
-import { SocialHubPanel } from '../components/SocialHubPanel';
+import { LeaderboardPanel, SocialHubPanel } from '../components/SocialHubPanel';
 
 export interface QuickMatchUiState {
   searching: boolean;
@@ -27,7 +28,7 @@ interface HomePageProps {
   account: AccountInfo | null;
   snowEnabled: boolean;
   onToggleSnow: () => void;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode?: 'login' | 'register') => void;
   onOpenUpdates: () => void;
   banks: QuestionBank[];
   selectedBankId: string;
@@ -94,6 +95,14 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [privacyCurtain, setPrivacyCurtain] = useState(true);
 
   const [uploadStatus, setUploadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
+  const [friendships, setFriendships] = useState<FriendshipItem[]>([]);
+  const [focusPair, setFocusPair] = useState<{ pairId: string; seq: number } | null>(null);
+
+  const handleOpenChatPair = useCallback((pairId: string) => {
+    setFocusPair({ pairId, seq: Date.now() });
+    document.getElementById('friends-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
 
   const tier = getRankTier(rankProfile?.elo ?? 1000);
   const isLoggedInAccount = Boolean(account && !account.isAnonymous);
@@ -143,55 +152,22 @@ export const HomePage: React.FC<HomePageProps> = ({
     <main className="app-shell">
       <header className="topbar christmas-topbar">
         <div className="brand">
-          <span className="festive-title">♟ Cờ Vua × Trắc Nghiệm</span>
+          <span className="festive-title" style={{ fontSize: '1.22rem' }}>
+            ♟ Cờ Vua × Trắc Nghiệm
+          </span>
           <span className="badge festive-badge" style={{ borderColor: firebaseReady ? 'var(--support)' : undefined }}>
             {firebaseReady ? 'Trực tuyến & Rank' : 'Online & P2P'}
           </span>
         </div>
 
-        <div className="row" style={{ gap: '0.45rem' }}>
+        <div className="row" style={{ gap: '0.5rem' }}>
           <span
             className="badge"
-            style={{ color: tier.color, borderColor: tier.color }}
+            style={{ color: tier.color, borderColor: tier.color, fontSize: '0.88rem' }}
             title="Hạng hiện tại"
           >
             {tier.icon} {tier.label} • {rankProfile?.elo ?? 1000} Elo
           </span>
-
-          {account?.friendId && (
-            <button
-              type="button"
-              className="badge id-pill"
-              title="Nhấn để sao chép Mã ID kết bạn 9 số"
-              onClick={() => {
-                void navigator.clipboard?.writeText(account.friendId).catch(() => {});
-                onShowToast(`Đã sao chép Mã ID: ${formatFriendId(account.friendId)}`);
-              }}
-            >
-              ID: {formatFriendId(account.friendId)}
-            </button>
-          )}
-
-          <input
-            id="player-name-input"
-            name="playerName"
-            aria-label="Tên hiển thị của bạn"
-            className="input-field"
-            style={{ inlineSize: 150, minBlockSize: 36, padding: '0.35rem 0.65rem' }}
-            value={playerName}
-            maxLength={24}
-            onChange={(e) => onPlayerNameChange(e.target.value)}
-            placeholder="Tên của bạn…"
-          />
-
-          <button
-            type="button"
-            className={isLoggedInAccount ? 'btn-mini' : 'btn-primary btn-mini'}
-            onClick={onOpenAuth}
-            title={isLoggedInAccount ? 'Quản lý tài khoản' : 'Đăng nhập hoặc tạo tài khoản để giữ Elo vĩnh viễn'}
-          >
-            {isLoggedInAccount ? `Tài khoản: ${account?.accountLabel}` : 'Đăng nhập / Lưu Elo'}
-          </button>
 
           <button
             type="button"
@@ -199,7 +175,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             onClick={onOpenUpdates}
             title="Xem bảng thông báo cập nhật mới"
           >
-            Cập nhật
+            <span className="row" style={{ gap: '0.3rem' }}>
+              <Sparkles size={14} /> Bản cập nhật
+            </span>
           </button>
 
           <button
@@ -208,7 +186,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             onClick={onToggleSnow}
             title="Bật hoặc tắt hiệu ứng tuyết rơi Giáng Sinh"
           >
-            {snowEnabled ? 'Tuyết: Bật' : 'Tuyết: Tắt'}
+            <span className="row" style={{ gap: '0.3rem' }}>
+              <Snowflake size={14} /> {snowEnabled ? 'Tuyết: Bật' : 'Tuyết: Tắt'}
+            </span>
           </button>
         </div>
       </header>
@@ -219,8 +199,158 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
-      {/* Hàng 1: Ghép trận nhanh (Ranked) + Cộng đồng (BXH / Bạn bè / Thế giới) */}
-      <div className="qr-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+      {/* KHU VỰC TÀI KHOẢN, ĐĂNG NHẬP / ĐĂNG KÝ & MÃ ID 9 SỐ NỔI BẬT */}
+      <section className="panel account-hero-banner" aria-label="Tài khoản và Đăng nhập">
+        <div className="hero-profile-col col" style={{ gap: '0.65rem' }}>
+          <div className="col" style={{ gap: '0.28rem' }}>
+            <label htmlFor="player-name-input" style={{ fontSize: '0.88rem', color: 'var(--muted)', fontWeight: 600 }}>
+              Tên hiển thị của bạn trên bàn cờ &amp; Kênh Thế Giới
+            </label>
+            <div className="row" style={{ gap: '0.5rem' }}>
+              <input
+                id="player-name-input"
+                name="playerName"
+                aria-label="Tên hiển thị của bạn"
+                className="input-field"
+                style={{ flex: 1, minBlockSize: 44, fontSize: '1rem', fontWeight: 600 }}
+                value={playerName}
+                maxLength={24}
+                onChange={(e) => onPlayerNameChange(e.target.value)}
+                placeholder="Nhập tên của bạn…"
+              />
+            </div>
+          </div>
+
+          {account?.friendId && (
+            <div className="id-highlight-box">
+              <div className="col" style={{ gap: '0.1rem' }}>
+                <span className="muted" style={{ fontSize: '0.8rem' }}>
+                  Mã ID Kết Bạn 9 Số của bạn
+                </span>
+                <strong style={{ color: 'var(--gold)', fontSize: '1.22rem', letterSpacing: '0.08em' }}>
+                  {formatFriendId(account.friendId)}
+                </strong>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(account.friendId).catch(() => {});
+                  setCopiedId(true);
+                  onShowToast(`Đã sao chép Mã ID: ${formatFriendId(account.friendId)}`);
+                  window.setTimeout(() => setCopiedId(false), 1800);
+                }}
+              >
+                <span className="row" style={{ gap: '0.35rem' }}>
+                  {copiedId ? <Check size={16} /> : <Copy size={16} />}
+                  {copiedId ? 'Đã chép' : 'Sao chép ID'}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="hero-auth-col col" style={{ gap: '0.65rem' }}>
+          {isLoggedInAccount && account ? (
+            <>
+              <div className="row" style={{ gap: '0.55rem' }}>
+                <ShieldCheck size={24} color="#2fb375" aria-hidden="true" />
+                <div className="col" style={{ gap: '0.1rem' }}>
+                  <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.18rem' }}>
+                    Đã liên kết: {account.accountLabel}
+                  </h2>
+                  <span className="muted" style={{ fontSize: '0.88rem' }}>
+                    Phương thức:{' '}
+                    <strong>
+                      {account.provider === 'google'
+                        ? 'Google'
+                        : account.provider === 'facebook'
+                          ? 'Facebook'
+                          : 'Tài khoản cá nhân'}
+                    </strong>{' '}
+                    • Elo &amp; bạn bè đang được đồng bộ an toàn.
+                  </span>
+                </div>
+              </div>
+              <div className="row" style={{ marginTop: 'auto' }}>
+                <button
+                  type="button"
+                  className="btn-auth-large"
+                  onClick={() => onOpenAuth('login')}
+                >
+                  Quản lý tài khoản / Đăng xuất
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="col" style={{ gap: '0.22rem' }}>
+                <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.24rem' }}>
+                  Đăng nhập / Đăng ký Tài khoản
+                </h2>
+                <p className="muted" style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  Chơi ngay không cần đăng nhập. Nhưng khi <strong>đăng nhập hoặc tạo tài khoản</strong> (Google, Facebook hoặc Tên tài khoản), điểm <strong>{rankProfile?.elo ?? 1000} Elo</strong> và danh sách bạn bè sẽ được lưu vĩnh viễn.
+                </p>
+              </div>
+
+              <div className="auth-cta-group">
+                <button
+                  type="button"
+                  className="btn-primary btn-auth-large"
+                  onClick={() => onOpenAuth('login')}
+                >
+                  <span className="row" style={{ gap: '0.45rem' }}>
+                    <LogIn size={18} /> Đăng nhập ngay
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-success btn-auth-large"
+                  onClick={() => onOpenAuth('register')}
+                >
+                  <span className="row" style={{ gap: '0.45rem' }}>
+                    <UserPlus size={18} /> Đăng ký tài khoản
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-google btn-auth-mini-social"
+                  onClick={() => onOpenAuth('login')}
+                  title="Đăng nhập bằng Google"
+                >
+                  Google
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-facebook btn-auth-mini-social"
+                  onClick={() => onOpenAuth('login')}
+                  title="Đăng nhập bằng Facebook"
+                >
+                  Facebook
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* HÀNG NỔI BẬT: BẠN BÈ & TIN NHẮN (ID 9 SỐ) + KÊNH THẾ GIỚI HIỂN THỊ SONG SONG CỠ LỚN */}
+      <SocialHubPanel
+        firebaseReady={firebaseReady}
+        myUid={firebaseUid}
+        myName={playerName || rankProfile?.name || 'Người chơi'}
+        myElo={rankProfile?.elo ?? 1000}
+        focusPair={focusPair}
+        onFriendshipsChange={setFriendships}
+        onJoinRoomCode={onJoinOnlineRoom}
+        onChallengeFriend={onChallengeFriend}
+        onNotify={onShowToast}
+      />
+
+      {/* Hàng 2: Ghép trận nhanh (Ranked) + Bảng Xếp Hạng Kỳ Thủ */}
+      <div className="qr-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
         <section className="panel col rank-hero">
           <div className="between">
             <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.14rem' }}>
@@ -231,7 +361,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </span>
           </div>
 
-          <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+          <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
             Ghép cặp trực tiếp và tính điểm Rank chính thức bằng bộ đề chuẩn{' '}
             <strong>40 câu Giải tích 1</strong>. Chơi ngay không cần đăng nhập.
           </p>
@@ -291,32 +421,32 @@ export const HomePage: React.FC<HomePageProps> = ({
               type="button"
               className="btn-primary"
               disabled={!firebaseReady}
-              style={{ marginTop: 'auto' }}
+              style={{ marginTop: 'auto', minBlockSize: 44, fontSize: '0.98rem' }}
               onClick={() => onStartQuickMatch(clockSec)}
             >
               {firebaseReady ? 'Tìm trận Ranked ngay' : 'Đang kết nối máy chủ…'}
             </button>
           )}
 
-          <div className="muted" style={{ fontSize: '0.77rem' }}>
+          <div className="muted" style={{ fontSize: '0.78rem' }}>
             {firebaseStatusText
               ? firebaseStatusText
               : isLoggedInAccount
                 ? `Đã đồng bộ tài khoản (${account?.accountLabel}) — Elo được bảo toàn trên mọi thiết bị.`
-                : 'Đang chơi chế độ Khách — đăng nhập bất kỳ lúc nào để sao lưu Elo vĩnh viễn.'}
+                : 'Đang chơi chế độ Khách — bấm nút Đăng nhập / Đăng ký ở trên để lưu Elo vĩnh viễn.'}
           </div>
         </section>
 
-        <SocialHubPanel
+        <LeaderboardPanel
           firebaseReady={firebaseReady}
           myUid={firebaseUid}
           myName={playerName || rankProfile?.name || 'Người chơi'}
           myElo={rankProfile?.elo ?? 1000}
+          friendships={friendships}
           leaderboard={leaderboard}
           leaderboardLoading={leaderboardLoading}
           onRefreshLeaderboard={onRefreshLeaderboard}
-          onJoinRoomCode={onJoinOnlineRoom}
-          onChallengeFriend={onChallengeFriend}
+          onOpenChatPair={handleOpenChatPair}
           onNotify={onShowToast}
         />
       </div>

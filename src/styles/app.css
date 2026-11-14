@@ -158,12 +158,12 @@ button:disabled {
   position: relative;
   z-index: 1;
   inline-size: 100%;
-  max-inline-size: 1120px;
+  max-inline-size: 1320px;
   margin-inline: auto;
-  padding: 0.75rem;
+  padding: 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.9rem;
 }
 
 .topbar {
@@ -829,14 +829,16 @@ dialog.game-dialog::backdrop {
   word-break: break-word;
 }
 
-.chat-bubble.mine {
+.chat-bubble.mine,
+.chat-bubble.me {
   align-self: flex-end;
   background: rgba(31, 111, 67, 0.38);
   border: 1px solid rgba(47, 153, 96, 0.45);
   color: #f3faf5;
 }
 
-.chat-bubble.theirs {
+.chat-bubble.theirs,
+.chat-bubble.them {
   align-self: flex-start;
   background: var(--panel-2);
   border: 1px solid var(--border);
@@ -953,4 +955,106 @@ dialog.game-dialog::backdrop {
   .snow-layer {
     display: none;
   }
+}
+
+/* Giao diện đổi mới: Khu vực Tài khoản/Đăng nhập + Bạn bè + Kênh Thế Giới cỡ lớn */
+.account-hero-banner {
+  display: grid;
+  grid-template-columns: minmax(290px, 0.95fr) minmax(340px, 1.35fr);
+  gap: 1.15rem;
+  padding: 1.25rem;
+  background: linear-gradient(
+    135deg,
+    rgba(22, 35, 28, 0.98) 0%,
+    rgba(29, 46, 37, 0.96) 55%,
+    rgba(163, 36, 43, 0.14) 100%
+  );
+  border: 1px solid rgba(212, 163, 89, 0.48);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 820px) {
+  .account-hero-banner {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hero-profile-col {
+  padding-right: 0.75rem;
+  border-right: 1px solid rgba(44, 64, 52, 0.8);
+}
+
+@media (max-width: 820px) {
+  .hero-profile-col {
+    padding-right: 0;
+    border-right: none;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid rgba(44, 64, 52, 0.8);
+  }
+}
+
+.id-highlight-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.95rem;
+  border-radius: 12px;
+  background: #101b15;
+  border: 1px dashed rgba(212, 163, 89, 0.58);
+}
+
+.auth-cta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+
+.btn-auth-large {
+  min-block-size: 46px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.98rem;
+  border-radius: 12px;
+  flex: 1 1 180px;
+}
+
+.btn-auth-mini-social {
+  width: auto;
+  inline-size: auto;
+  min-block-size: 46px;
+  padding: 0.55rem 1rem;
+  font-size: 0.94rem;
+  border-radius: 12px;
+  flex: 0 1 auto;
+}
+
+.community-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .community-showcase-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.social-card {
+  padding: 1.15rem;
+  min-block-size: 440px;
+  gap: 0.75rem;
+}
+
+.friends-card {
+  border-color: rgba(212, 163, 89, 0.42);
+  background: linear-gradient(165deg, rgba(212, 163, 89, 0.06), var(--panel) 40%);
+}
+
+.world-chat-card {
+  border-color: rgba(47, 153, 96, 0.45);
+  background: linear-gradient(165deg, rgba(31, 111, 67, 0.08), var(--panel) 40%);
 }

@@ -63,6 +63,7 @@ export const App: React.FC = () => {
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [firebaseStatusText, setFirebaseStatusText] = useState<string | undefined>(undefined);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState<'login' | 'register'>('login');
   const [updateOpen, setUpdateOpen] = useState<boolean>(
     () => !localStorage.getItem('cq_update_christmas_v2_seen')
   );
@@ -1187,7 +1188,10 @@ export const App: React.FC = () => {
           account={account}
           snowEnabled={snowEnabled}
           onToggleSnow={handleToggleSnow}
-          onOpenAuth={() => setAuthOpen(true)}
+          onOpenAuth={(mode) => {
+            setAuthInitialTab(mode ?? 'login');
+            setAuthOpen(true);
+          }}
           onOpenUpdates={() => setUpdateOpen(true)}
           banks={banks}
           selectedBankId={selectedBankId}
@@ -1300,6 +1304,7 @@ export const App: React.FC = () => {
       {content}
       <AuthModal
         open={authOpen}
+        initialTab={authInitialTab}
         account={account}
         currentDisplayName={playerName}
         currentElo={rankProfile?.elo ?? 1000}
@@ -1316,6 +1321,7 @@ export const App: React.FC = () => {
         onOpenAuth={() => {
           localStorage.setItem('cq_update_christmas_v2_seen', '1');
           setUpdateOpen(false);
+          setAuthInitialTab('login');
           setAuthOpen(true);
         }}
       />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AccountInfo,
   formatFriendId,
@@ -13,6 +13,7 @@ import { NativeModal } from './NativeModal';
 
 interface AuthModalProps {
   open: boolean;
+  initialTab?: 'login' | 'register';
   account: AccountInfo | null;
   currentDisplayName: string;
   currentElo: number;
@@ -22,19 +23,30 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   open,
+  initialTab = 'login',
   account,
   currentDisplayName,
   currentElo,
   onClose,
   onAuthSuccess,
 }) => {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [displayName, setDisplayName] = useState(currentDisplayName || 'Người chơi');
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setTab(initialTab);
+      setErrorMsg(null);
+      if (currentDisplayName) {
+        setDisplayName(currentDisplayName);
+      }
+    }
+  }, [open, initialTab, currentDisplayName]);
 
   const isLinkedAccount = Boolean(account && !account.isAnonymous);
 
@@ -131,10 +143,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   return (
     <NativeModal open={open} titleId="auth-modal-title" dismissible onClose={onClose}>
       <div className="between">
-        <h2 id="auth-modal-title" className="festive-heading" style={{ margin: 0 }}>
-          {isLinkedAccount ? 'Tài khoản của bạn' : 'Đăng nhập / Lưu Elo vĩnh viễn'}
+        <h2 id="auth-modal-title" className="festive-heading" style={{ margin: 0, fontSize: '1.3rem' }}>
+          {isLinkedAccount ? 'Tài khoản của bạn' : 'Đăng nhập / Đăng ký Tài khoản'}
         </h2>
-        <button type="button" onClick={onClose} style={{ minBlockSize: 34, padding: '0.25rem 0.65rem' }}>
+        <button type="button" onClick={onClose} style={{ minBlockSize: 38, padding: '0.3rem 0.8rem' }}>
           Đóng
         </button>
       </div>
@@ -314,7 +326,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             )}
 
-            <button type="submit" className="btn-primary" disabled={busy}>
+            <button type="submit" className="btn-primary" disabled={busy} style={{ minBlockSize: 46, fontSize: '0.98rem' }}>
               {busy
                 ? 'Đang xử lý…'
                 : tab === 'login'
