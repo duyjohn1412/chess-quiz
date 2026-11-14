@@ -121,6 +121,22 @@ button:disabled {
   border-color: #d4a359;
 }
 
+.btn-facebook {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  inline-size: 100%;
+  background: #1877f2;
+  border-color: #3b82f6;
+  color: #ffffff;
+  font-weight: 700;
+}
+.btn-facebook:hover:not(:disabled) {
+  background: #166fe5;
+  border-color: #60a5fa;
+}
+
 .btn-mini {
   min-block-size: 30px;
   padding: 0.25rem 0.6rem;

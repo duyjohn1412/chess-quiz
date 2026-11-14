@@ -33,7 +33,7 @@ export const UpdateAnnouncementModal: React.FC<UpdateAnnouncementModalProps> = (
 
       <ul className="update-list">
         <li>
-          <strong>1. Đăng nhập Google hoặc Tài khoản cá nhân:</strong> Hỗ trợ đăng nhập nhanh bằng Google hoặc đăng ký Tên tài khoản + Mật khẩu. Toàn bộ điểm Elo hiện tại trên máy sẽ tự động được bảo toàn khi bạn liên kết.
+          <strong>1. Đăng nhập Google, Facebook hoặc Tài khoản cá nhân:</strong> Hỗ trợ đăng nhập nhanh bằng Google, Facebook hoặc đăng ký Tên tài khoản + Mật khẩu. Toàn bộ điểm Elo hiện tại trên máy sẽ tự động được bảo toàn khi bạn liên kết.
         </li>
         <li>
           <strong>2. Mã ID 9 số &amp; Kết bạn trực tuyến:</strong> Mỗi kỳ thủ có một mã ID gồm 9 chữ số riêng biệt. Bạn có thể tìm theo ID hoặc Tên để kết bạn, nhắn tin 1-1 và gửi lời mời đấu phòng riêng chỉ với một chạm.
