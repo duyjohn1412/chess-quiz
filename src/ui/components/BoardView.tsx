@@ -228,8 +228,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
         onSquareClick={handleSquareClick}
         customSquareStyles={customSquareStyles}
         customArrows={customArrows}
-        customDarkSquareStyle={{ backgroundColor: '#5c6b7a' }}
-        customLightSquareStyle={{ backgroundColor: '#cbd5e1' }}
+        customDarkSquareStyle={{ backgroundColor: '#9e6b43' }}
+        customLightSquareStyle={{ backgroundColor: '#edd6b0' }}
         animationDuration={180}
       />
 

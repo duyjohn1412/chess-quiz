@@ -108,6 +108,77 @@ service cloud.firestore {
     // Document ID: Log entry ID
     // Access: Admin read/write only.
     //
+    // Collection: social_profiles/{uid}
+    // Document ID: Firebase Auth UID
+    // Fields (8 required, strict schema):
+    //   - uid: string (immutable, == uid)
+    //   - friendId: string (9-digit friend code, ^[0-9]{9}$)
+    //   - name: string (1..24 chars)
+    //   - nameLower: string (1..24 chars, lowercase search key)
+    //   - elo: int (600..3000)
+    //   - provider: string ('guest' | 'google' | 'password' | 'facebook')
+    //   - lastSeenAt: timestamp | int (>= 0)
+    //   - updatedAt: timestamp | int (>= 0)
+    //   * Public social profile for friend lookup & presence (no PII).
+    //
+    // Collection: friendships/{pairId}
+    // Document ID: Canonical sorted UID pair ID (uidA_uidB)
+    // Required fields:
+    //   - uidA: string (immutable, valid UID, != uidB)
+    //   - uidB: string (immutable, valid UID, != uidA)
+    //   - requesterUid: string (immutable, == creator auth.uid on create, uidA | uidB)
+    //   - status: string ('PENDING' on create; 'PENDING' -> 'ACCEPTED' by non-requester only)
+    //   - users: list<string> (size == 2, contains uidA and uidB)
+    // Optional validated fields (strict schema allowlist):
+    //   - pairId: string (== pairId)
+    //   - names: map<uid, string(1..24)>
+    //   - elos: map<uid, int(600..3000)>
+    //   - friendIds: map<uid, string(^[0-9]{9}$)>
+    //   - lastMsgText: string (<= 300 chars)
+    //   - lastMsgSenderUid: string ('' | valid UID)
+    //   - isSelfA: bool
+    //   - createdAt, updatedAt: timestamp | int (>= 0)
+    //   * Readable/updatable/deletable ONLY by participants (uidA, uidB) and Admin.
+    //
+    // Subcollection: conversations/{pairId}/messages/{msgId}
+    // Document ID: Message ID
+    // Required fields:
+    //   - fromUid: string (== request.auth.uid)
+    //   - text: string (1..300 chars)
+    // Optional validated fields (strict schema allowlist):
+    //   - fromName: string (1..24 chars)
+    //   - toUid: string (valid UID != fromUid)
+    //   - inviteRoomCode: string | null (null or ^[A-Z0-9]{6,16}$)
+    //   - clockSeconds: int (180 | 300 | 600) | null
+    //   - createdAt: timestamp | int (>= 0)
+    //   * Scoped to participants of friendships/{pairId} (status == 'ACCEPTED' to send).
+    //     Immutable after creation (no user update/delete).
+    //
+    // Collection: global_chat/{msgId}
+    // Document ID: Message ID
+    // Required fields:
+    //   - senderUid: string (== request.auth.uid)
+    //   - senderName: string (1..24 chars)
+    //   - text: string (1..240 chars)
+    // Optional validated fields (strict schema allowlist):
+    //   - senderElo: int (600..3000)
+    //   - senderFriendId: string (^[0-9]{9}$)
+    //   - inviteRoomCode: string | null (null or ^[A-Z0-9]{6,16}$)
+    //   - clockSeconds: int (180 | 300 | 600) | null
+    //   - createdAt: timestamp | int (>= 0)
+    //   * Public lobby chat (no PII). Immutable for users; Admin can moderate/delete.
+    //
+    // Subcollection: rooms/{code}/messages/{msgId}
+    // Document ID: Message ID
+    // Required fields:
+    //   - senderUid: string (== request.auth.uid)
+    //   - senderName: string (1..24 chars)
+    //   - text: string (1..240 chars)
+    // Optional validated fields (strict schema allowlist):
+    //   - createdAt: timestamp | int (>= 0)
+    //   * Readable by authenticated room visitors; writable ONLY by joined room members
+    //     (host, guest, or joined spectators). Immutable for users.
+    //
     // ===============================================================
 
     // ===============================================================
@@ -190,6 +261,43 @@ service cloud.firestore {
 
     function getRoomDoc(code) {
       return get(/databases/$(database)/documents/rooms/$(code));
+    }
+
+    function isValidTimestampOrMillis(v) {
+      return v is timestamp || (v is int && v >= 0);
+    }
+
+    function getFriendshipDoc(pairId) {
+      return get(/databases/$(database)/documents/friendships/$(pairId));
+    }
+
+    function isFriendshipParticipant(data) {
+      return isAuthenticated() &&
+        (request.auth.uid == data.uidA || request.auth.uid == data.uidB);
+    }
+
+    function isRoomMember(code) {
+      let room = getRoomDoc(code);
+      return isAuthenticated() &&
+        room != null &&
+        (
+          room.data.hostUid == request.auth.uid ||
+          room.data.guestUid == request.auth.uid ||
+          request.auth.uid in room.data.spectatorUids
+        );
+    }
+
+    function isConversationParticipant(pairId) {
+      let friendship = getFriendshipDoc(pairId);
+      return friendship != null &&
+        isFriendshipParticipant(friendship.data);
+    }
+
+    function canSendDirectMessage(pairId) {
+      let friendship = getFriendshipDoc(pairId);
+      return friendship != null &&
+        friendship.data.status == 'ACCEPTED' &&
+        isFriendshipParticipant(friendship.data);
     }
 
     // ===============================================================
@@ -692,6 +800,181 @@ service cloud.firestore {
         data.createdAt is timestamp && data.createdAt == request.time;
     }
 
+    function socialProfileFields() {
+      return [
+        'uid',
+        'friendId',
+        'name',
+        'nameLower',
+        'elo',
+        'provider',
+        'lastSeenAt',
+        'updatedAt'
+      ];
+    }
+
+    function isValidSocialProfile(data, uid) {
+      return hasExactFields(data, socialProfileFields()) &&
+        isValidUidString(data.uid) &&
+        data.uid == uid &&
+        data.friendId is string &&
+        data.friendId.matches('^[0-9]{9}$') &&
+        isValidDisplayName(data.name) &&
+        data.nameLower is string &&
+        data.nameLower.size() >= 1 &&
+        data.nameLower.size() <= 24 &&
+        isValidElo(data.elo) &&
+        data.provider in ['guest', 'google', 'password', 'facebook'] &&
+        isValidTimestampOrMillis(data.lastSeenAt) &&
+        isValidTimestampOrMillis(data.updatedAt);
+    }
+
+    function friendshipAllowedFields() {
+      return [
+        'pairId',
+        'uidA',
+        'uidB',
+        'users',
+        'requesterUid',
+        'status',
+        'names',
+        'elos',
+        'friendIds',
+        'lastMsgText',
+        'lastMsgSenderUid',
+        'isSelfA',
+        'createdAt',
+        'updatedAt'
+      ];
+    }
+
+    function isValidPairNamesMap(m, uidA, uidB) {
+      return m is map &&
+        m.keys().hasOnly([uidA, uidB]) &&
+        (!(uidA in m) || isValidDisplayName(m[uidA])) &&
+        (!(uidB in m) || isValidDisplayName(m[uidB]));
+    }
+
+    function isValidPairElosMap(m, uidA, uidB) {
+      return m is map &&
+        m.keys().hasOnly([uidA, uidB]) &&
+        (!(uidA in m) || isValidElo(m[uidA])) &&
+        (!(uidB in m) || isValidElo(m[uidB]));
+    }
+
+    function isValidPairFriendIdsMap(m, uidA, uidB) {
+      return m is map &&
+        m.keys().hasOnly([uidA, uidB]) &&
+        (!(uidA in m) || (m[uidA] is string && m[uidA].matches('^[0-9]{9}$'))) &&
+        (!(uidB in m) || (m[uidB] is string && m[uidB].matches('^[0-9]{9}$')));
+    }
+
+    function isValidFriendship(data, pairId) {
+      return hasOnlyAllowedFields(data, friendshipAllowedFields()) &&
+        hasRequiredFields(data, ['uidA', 'uidB', 'requesterUid', 'status', 'users']) &&
+        isValidUidString(data.uidA) &&
+        isValidUidString(data.uidB) &&
+        data.uidA != data.uidB &&
+        (!('pairId' in data) || (data.pairId is string && data.pairId == pairId)) &&
+        isValidUidString(data.requesterUid) &&
+        (data.requesterUid == data.uidA || data.requesterUid == data.uidB) &&
+        data.status in ['PENDING', 'ACCEPTED'] &&
+        data.users is list &&
+        data.users.size() == 2 &&
+        isValidUidString(data.users[0]) &&
+        isValidUidString(data.users[1]) &&
+        data.uidA in data.users &&
+        data.uidB in data.users &&
+        (!('names' in data) || isValidPairNamesMap(data.names, data.uidA, data.uidB)) &&
+        (!('elos' in data) || isValidPairElosMap(data.elos, data.uidA, data.uidB)) &&
+        (!('friendIds' in data) || isValidPairFriendIdsMap(data.friendIds, data.uidA, data.uidB)) &&
+        (!('lastMsgText' in data) || (data.lastMsgText is string && data.lastMsgText.size() <= 300)) &&
+        (!('lastMsgSenderUid' in data) || (data.lastMsgSenderUid is string && (data.lastMsgSenderUid == '' || isValidUidString(data.lastMsgSenderUid)))) &&
+        (!('isSelfA' in data) || data.isSelfA is bool) &&
+        (!('createdAt' in data) || isValidTimestampOrMillis(data.createdAt)) &&
+        (!('updatedAt' in data) || isValidTimestampOrMillis(data.updatedAt));
+    }
+
+    function isValidFriendshipUpdate(prev, next) {
+      return isFriendshipParticipant(prev) &&
+        areImmutableFieldsUnchanged(prev, next, ['pairId', 'uidA', 'uidB', 'requesterUid']) &&
+        next.users.hasAll(prev.users) &&
+        (
+          (prev.status == 'PENDING' && next.status == 'PENDING') ||
+          (prev.status == 'PENDING' && next.status == 'ACCEPTED' && request.auth.uid != prev.requesterUid) ||
+          (prev.status == 'ACCEPTED' && next.status == 'ACCEPTED')
+        );
+    }
+
+    function directMessageAllowedFields() {
+      return [
+        'fromUid',
+        'fromName',
+        'toUid',
+        'text',
+        'inviteRoomCode',
+        'clockSeconds',
+        'createdAt'
+      ];
+    }
+
+    function isValidDirectMessage(data) {
+      return hasOnlyAllowedFields(data, directMessageAllowedFields()) &&
+        hasRequiredFields(data, ['fromUid', 'text']) &&
+        isValidUidString(data.fromUid) &&
+        data.fromUid == request.auth.uid &&
+        (!('fromName' in data) || isValidDisplayName(data.fromName)) &&
+        (!('toUid' in data) || (isValidUidString(data.toUid) && data.toUid != data.fromUid)) &&
+        data.text is string &&
+        data.text.size() >= 1 &&
+        data.text.size() <= 300 &&
+        (!('inviteRoomCode' in data) || data.inviteRoomCode == null || isValidRoomCode(data.inviteRoomCode)) &&
+        (!('clockSeconds' in data) || data.clockSeconds == null || isValidClockSeconds(data.clockSeconds)) &&
+        (!('createdAt' in data) || isValidTimestampOrMillis(data.createdAt));
+    }
+
+    function globalChatAllowedFields() {
+      return [
+        'senderUid',
+        'senderName',
+        'senderElo',
+        'senderFriendId',
+        'text',
+        'inviteRoomCode',
+        'clockSeconds',
+        'createdAt'
+      ];
+    }
+
+    function roomMessageAllowedFields() {
+      return ['senderUid', 'senderName', 'text', 'createdAt'];
+    }
+
+    function isValidPublicChatMessageBase(data) {
+      return hasRequiredFields(data, ['senderUid', 'senderName', 'text']) &&
+        isValidUidString(data.senderUid) &&
+        data.senderUid == request.auth.uid &&
+        isValidDisplayName(data.senderName) &&
+        data.text is string &&
+        data.text.size() >= 1 &&
+        data.text.size() <= 240 &&
+        (!('createdAt' in data) || isValidTimestampOrMillis(data.createdAt));
+    }
+
+    function isValidGlobalChatMessage(data) {
+      return hasOnlyAllowedFields(data, globalChatAllowedFields()) &&
+        isValidPublicChatMessageBase(data) &&
+        (!('senderElo' in data) || isValidElo(data.senderElo)) &&
+        (!('senderFriendId' in data) || (data.senderFriendId is string && data.senderFriendId.matches('^[0-9]{9}$'))) &&
+        (!('inviteRoomCode' in data) || data.inviteRoomCode == null || isValidRoomCode(data.inviteRoomCode)) &&
+        (!('clockSeconds' in data) || data.clockSeconds == null || isValidClockSeconds(data.clockSeconds));
+    }
+
+    function isValidRoomMessage(data) {
+      return hasOnlyAllowedFields(data, roomMessageAllowedFields()) &&
+        isValidPublicChatMessageBase(data);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -781,6 +1064,71 @@ service cloud.firestore {
         allow read, write: if isAdmin();
         allow read, delete: if isRoomHost(code);
       }
+
+      // In-match room chat (players & spectators)
+      match /messages/{msgId} {
+        allow read: if isAuthenticated();
+        allow create: if isRoomMember(code) &&
+          isValidRoomMessage(request.resource.data);
+        allow update: if false;
+        allow delete: if false;
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // Public social profiles for friend lookup & online presence (no PII)
+    match /social_profiles/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(uid) &&
+        uidUnchanged() &&
+        isValidSocialProfile(request.resource.data, uid);
+      allow update: if isOwner(uid) &&
+        uidNotModified() &&
+        isValidSocialProfile(request.resource.data, uid);
+      allow delete: if false;
+      allow read, write: if isAdmin();
+    }
+
+    // Friendships & DM metadata (restricted to participants uidA/uidB and Admin)
+    match /friendships/{pairId} {
+      allow get: if isAuthenticated() && (
+        resource == null ||
+        isFriendshipParticipant(resource.data)
+      );
+      allow list: if isAuthenticated() && (
+        request.auth.uid in resource.data.users ||
+        isFriendshipParticipant(resource.data)
+      );
+      allow create: if isAuthenticated() &&
+        isValidFriendship(request.resource.data, pairId) &&
+        isFriendshipParticipant(request.resource.data) &&
+        request.resource.data.requesterUid == request.auth.uid &&
+        request.resource.data.status == 'PENDING';
+      allow update: if isAuthenticated() &&
+        isValidFriendship(request.resource.data, pairId) &&
+        isValidFriendshipUpdate(resource.data, request.resource.data);
+      allow delete: if isFriendshipParticipant(resource.data);
+      allow read, write: if isAdmin();
+    }
+
+    // Direct messages between accepted friends (scoped to friendships/{pairId})
+    match /conversations/{pairId}/messages/{msgId} {
+      allow read: if isConversationParticipant(pairId);
+      allow create: if canSendDirectMessage(pairId) &&
+        isValidDirectMessage(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+      allow read, write: if isAdmin();
+    }
+
+    // Global public lobby chat (no PII; immutable for users, Admin can moderate)
+    match /global_chat/{msgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        isValidGlobalChatMessage(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+      allow read, write: if isAdmin();
     }
 
     // Admin audit logs (restricted exclusively to verified Google Admin)

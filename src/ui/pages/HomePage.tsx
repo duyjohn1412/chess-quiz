@@ -6,10 +6,13 @@ import {
   parseQuestionBank,
   saveBankToIdb,
 } from '../../quiz/bankLoader';
+import { AccountInfo, formatFriendId } from '../../net/firebaseClient';
+import { FriendshipItem } from '../../net/socialSystem';
 import { extractCodeFromInput } from '../../net/roomCode';
 import { getRankTier, RankProfile } from '../../rank/rankSystem';
 import { QuestionBank } from '../../types/game';
 import { QrScannerModal } from '../components/QrScannerModal';
+import { SocialHubPanel } from '../components/SocialHubPanel';
 
 export interface QuickMatchUiState {
   searching: boolean;
@@ -21,6 +24,11 @@ export interface QuickMatchUiState {
 interface HomePageProps {
   playerName: string;
   onPlayerNameChange: (name: string) => void;
+  account: AccountInfo | null;
+  snowEnabled: boolean;
+  onToggleSnow: () => void;
+  onOpenAuth: () => void;
+  onOpenUpdates: () => void;
   banks: QuestionBank[];
   selectedBankId: string;
   onSelectBankId: (id: string) => void;
@@ -29,14 +37,17 @@ interface HomePageProps {
   leaderboard: RankProfile[];
   leaderboardLoading: boolean;
   firebaseReady: boolean;
+  firebaseUid: string | null;
   firebaseStatusText?: string;
   toastMsg?: string | null;
+  onShowToast: (msg: string) => void;
   quickMatch: QuickMatchUiState;
   onStartQuickMatch: (clockSeconds: 180 | 300 | 600) => void;
   onCancelQuickMatch: () => void;
   onRefreshLeaderboard: () => void;
   onCreateOnlineRoom: (clockSeconds: 180 | 300 | 600) => void;
   onJoinOnlineRoom: (code: string, role: 'player' | 'spectator') => void;
+  onChallengeFriend: (friend: FriendshipItem) => void;
   onStartHotseat: (
     p1Name: string,
     p2Name: string,
@@ -48,6 +59,11 @@ interface HomePageProps {
 export const HomePage: React.FC<HomePageProps> = ({
   playerName,
   onPlayerNameChange,
+  account,
+  snowEnabled,
+  onToggleSnow,
+  onOpenAuth,
+  onOpenUpdates,
   banks,
   selectedBankId,
   onSelectBankId,
@@ -56,14 +72,17 @@ export const HomePage: React.FC<HomePageProps> = ({
   leaderboard,
   leaderboardLoading,
   firebaseReady,
+  firebaseUid,
   firebaseStatusText,
   toastMsg,
+  onShowToast,
   quickMatch,
   onStartQuickMatch,
   onCancelQuickMatch,
   onRefreshLeaderboard,
   onCreateOnlineRoom,
   onJoinOnlineRoom,
+  onChallengeFriend,
   onStartHotseat,
 }) => {
   const [clockSec, setClockSec] = useState<180 | 300 | 600>(300);
@@ -77,6 +96,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [uploadStatus, setUploadStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const tier = getRankTier(rankProfile?.elo ?? 1000);
+  const isLoggedInAccount = Boolean(account && !account.isAnonymous);
 
   const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,76 +141,119 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <main className="app-shell">
-      <header className="topbar">
+      <header className="topbar christmas-topbar">
         <div className="brand">
-          <span>♟️ Cờ Vua × Trắc Nghiệm</span>
-          <span className="badge" style={{ borderColor: firebaseReady ? '#22c55e' : undefined }}>
-            {firebaseReady ? '🟢 Trực tuyến & Rank' : 'Online & P2P'}
+          <span className="festive-title">♟ Cờ Vua × Trắc Nghiệm</span>
+          <span className="badge festive-badge" style={{ borderColor: firebaseReady ? 'var(--support)' : undefined }}>
+            {firebaseReady ? 'Trực tuyến & Rank' : 'Online & P2P'}
           </span>
         </div>
-        <div className="row">
+
+        <div className="row" style={{ gap: '0.45rem' }}>
           <span
             className="badge"
             style={{ color: tier.color, borderColor: tier.color }}
-            title="Hạng hiện tại (lưu theo trình duyệt — không xóa cache để giữ Rank)"
+            title="Hạng hiện tại"
           >
             {tier.icon} {tier.label} • {rankProfile?.elo ?? 1000} Elo
           </span>
-          <label htmlFor="player-name-input" className="muted" style={{ fontSize: '0.86rem' }}>
-            Tên của bạn:
-          </label>
+
+          {account?.friendId && (
+            <button
+              type="button"
+              className="badge id-pill"
+              title="Nhấn để sao chép Mã ID kết bạn 9 số"
+              onClick={() => {
+                void navigator.clipboard?.writeText(account.friendId).catch(() => {});
+                onShowToast(`Đã sao chép Mã ID: ${formatFriendId(account.friendId)}`);
+              }}
+            >
+              ID: {formatFriendId(account.friendId)}
+            </button>
+          )}
+
           <input
             id="player-name-input"
             name="playerName"
+            aria-label="Tên hiển thị của bạn"
             className="input-field"
-            style={{ inlineSize: 170 }}
+            style={{ inlineSize: 150, minBlockSize: 36, padding: '0.35rem 0.65rem' }}
             value={playerName}
             maxLength={24}
             onChange={(e) => onPlayerNameChange(e.target.value)}
-            placeholder="Nhập tên…"
+            placeholder="Tên của bạn…"
           />
+
+          <button
+            type="button"
+            className={isLoggedInAccount ? 'btn-mini' : 'btn-primary btn-mini'}
+            onClick={onOpenAuth}
+            title={isLoggedInAccount ? 'Quản lý tài khoản' : 'Đăng nhập hoặc tạo tài khoản để giữ Elo vĩnh viễn'}
+          >
+            {isLoggedInAccount ? `Tài khoản: ${account?.accountLabel}` : 'Đăng nhập / Lưu Elo'}
+          </button>
+
+          <button
+            type="button"
+            className="btn-mini"
+            onClick={onOpenUpdates}
+            title="Xem bảng thông báo cập nhật mới"
+          >
+            Cập nhật
+          </button>
+
+          <button
+            type="button"
+            className={snowEnabled ? 'btn-mini active-snow' : 'btn-mini'}
+            onClick={onToggleSnow}
+            title="Bật hoặc tắt hiệu ứng tuyết rơi Giáng Sinh"
+          >
+            {snowEnabled ? 'Tuyết: Bật' : 'Tuyết: Tắt'}
+          </button>
         </div>
       </header>
 
       {toastMsg && (
-        <div className="effect-banner danger" role="alert">
-          <span>⚠️ {toastMsg}</span>
+        <div className="effect-banner force" role="status">
+          <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Hàng 1: Ghép trận nhanh (Ranked) + Bảng xếp hạng Top 20 */}
-      <div className="qr-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))' }}>
+      {/* Hàng 1: Ghép trận nhanh (Ranked) + Cộng đồng (BXH / Bạn bè / Thế giới) */}
+      <div className="qr-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
         <section className="panel col rank-hero">
           <div className="between">
-            <h2 style={{ margin: 0, fontSize: '1.12rem' }}>⚡ Ghép trận nhanh (Xếp hạng)</h2>
+            <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.14rem' }}>
+              Ghép trận nhanh (Xếp hạng)
+            </h2>
             <span className="badge" style={{ color: tier.color, borderColor: tier.color }}>
               {tier.icon} {tier.label}
             </span>
           </div>
 
           <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-            Tự động ghép cặp trực tiếp với người chơi online, không cần mã phòng hay QR. Dùng bộ chuẩn{' '}
-            <strong>40 câu Giải tích 1</strong> để đảm bảo công bằng Rank.
+            Ghép cặp trực tiếp và tính điểm Rank chính thức bằng bộ đề chuẩn{' '}
+            <strong>40 câu Giải tích 1</strong>. Chơi ngay không cần đăng nhập.
           </p>
 
           <div className="panel row" style={{ justifyContent: 'space-between', background: 'var(--panel-2)', padding: '0.65rem 0.85rem' }}>
             <div className="col" style={{ gap: '0.15rem' }}>
-              <span style={{ fontSize: '0.82rem' }} className="muted">
+              <span style={{ fontSize: '0.8rem' }} className="muted">
                 Điểm Rank của bạn
               </span>
-              <strong style={{ fontSize: '1.15rem', color: tier.color }}>
+              <strong style={{ fontSize: '1.2rem', color: tier.color }}>
                 {rankProfile?.elo ?? 1000} Elo
               </strong>
             </div>
             <div className="col" style={{ gap: '0.15rem', textAlign: 'end', fontSize: '0.82rem' }}>
               <span>
-                T/H/B:{' '}
+                Thắng / Hòa / Bại:{' '}
                 <strong>
                   {rankProfile?.wins ?? 0}/{rankProfile?.draws ?? 0}/{rankProfile?.losses ?? 0}
                 </strong>
               </span>
               <span className="muted">
-                Đỉnh: {rankProfile?.bestElo ?? 1000} • Chuỗi thắng: {rankProfile?.streak ?? 0}
+                Đỉnh: {rankProfile?.bestElo ?? 1000} • Chuỗi: {rankProfile?.streak ?? 0}
               </span>
             </div>
           </div>
@@ -213,14 +276,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div className="effect-banner force" role="status">
               <div className="col" style={{ gap: '0.1rem' }}>
                 <strong className="quick-pulse">
-                  🔍 Đang tìm đối thủ ({quickMatch.clockSeconds / 60} phút) — {quickMatch.elapsedSec}s
+                  Đang tìm đối thủ ({quickMatch.clockSeconds / 60} phút) — {quickMatch.elapsedSec}s
                 </strong>
                 <span className="muted" style={{ fontSize: '0.78rem' }}>
-                  Đối thủ khác đang chờ: {Math.max(0, quickMatch.queueCount - 1)} • Tự động ghép đối thủ sau 25s
+                  Đối thủ khác đang chờ cùng mức: {Math.max(0, quickMatch.queueCount - 1)}
                 </span>
               </div>
               <button type="button" className="btn-danger" onClick={onCancelQuickMatch}>
-                ✖ Hủy
+                Hủy
               </button>
             </div>
           ) : (
@@ -231,86 +294,40 @@ export const HomePage: React.FC<HomePageProps> = ({
               style={{ marginTop: 'auto' }}
               onClick={() => onStartQuickMatch(clockSec)}
             >
-              {firebaseReady ? '⚡ Tìm trận Ranked ngay' : '⏳ Đang kết nối máy chủ…'}
+              {firebaseReady ? 'Tìm trận Ranked ngay' : 'Đang kết nối máy chủ…'}
             </button>
           )}
 
           <div className="muted" style={{ fontSize: '0.77rem' }}>
             {firebaseStatusText
               ? firebaseStatusText
-              : '💾 Rank gắn với trình duyệt hiện tại — đừng xóa cache/dữ liệu web để giữ thứ hạng.'}
+              : isLoggedInAccount
+                ? `Đã đồng bộ tài khoản (${account?.accountLabel}) — Elo được bảo toàn trên mọi thiết bị.`
+                : 'Đang chơi chế độ Khách — đăng nhập bất kỳ lúc nào để sao lưu Elo vĩnh viễn.'}
           </div>
         </section>
 
-        <section className="panel col">
-          <div className="between">
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>🏆 Bảng xếp hạng Top 20</h2>
-            <button
-              type="button"
-              disabled={leaderboardLoading || !firebaseReady}
-              onClick={onRefreshLeaderboard}
-            >
-              {leaderboardLoading ? 'Đang tải…' : '🔄 Làm mới'}
-            </button>
-          </div>
-
-          <div className="leaderboard-wrap">
-            {leaderboard.length === 0 ? (
-              <div className="muted" style={{ padding: '1rem', fontSize: '0.84rem', textAlign: 'center' }}>
-                {leaderboardLoading
-                  ? 'Đang tải bảng xếp hạng…'
-                  : 'Chưa có trận Ranked nào hoàn tất. Hãy đấu Ghép trận nhanh để ghi tên lên bảng vàng!'}
-              </div>
-            ) : (
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Người chơi</th>
-                    <th>Hạng</th>
-                    <th>Elo</th>
-                    <th>T/H/B</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((row, idx) => {
-                    const rowTier = getRankTier(row.elo);
-                    const isSelf = rankProfile && row.uid === rankProfile.uid;
-                    return (
-                      <tr key={row.uid} className={isSelf ? 'self-row' : undefined}>
-                        <td>{idx + 1}</td>
-                        <td>
-                          <strong>{row.name}</strong>
-                          {isSelf && <span className="muted"> (Bạn)</span>}
-                        </td>
-                        <td style={{ color: rowTier.color }}>
-                          {rowTier.icon} {rowTier.label}
-                        </td>
-                        <td>
-                          <strong>{row.elo}</strong>
-                        </td>
-                        <td>
-                          {row.wins}/{row.draws}/{row.losses}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <span className="muted" style={{ fontSize: '0.78rem' }}>
-            Mốc hạng: 🥉 Đồng (&lt;1050) • 🥈 Bạc (1050+) • 🥇 Vàng (1200+) • 💎 Bạch Kim (1400+) • 👑 Kim Cương (1600+)
-          </span>
-        </section>
+        <SocialHubPanel
+          firebaseReady={firebaseReady}
+          myUid={firebaseUid}
+          myName={playerName || rankProfile?.name || 'Người chơi'}
+          myElo={rankProfile?.elo ?? 1000}
+          leaderboard={leaderboard}
+          leaderboardLoading={leaderboardLoading}
+          onRefreshLeaderboard={onRefreshLeaderboard}
+          onJoinRoomCode={onJoinOnlineRoom}
+          onChallengeFriend={onChallengeFriend}
+          onNotify={onShowToast}
+        />
       </div>
 
       {/* Hàng 2: 3 chế độ cổ điển (1 máy + Phòng riêng mã/QR + Vào mã/QR) */}
       <div className="qr-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))' }}>
         {/* Chế độ 1 máy */}
         <section className="panel col">
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>🖥️ Chơi ngay trên 1 máy (Hot-seat)</h2>
+          <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.08rem' }}>
+            Chơi trên 1 máy (Hot-seat)
+          </h2>
           <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
             Đấu 1v1 trực tiếp tại chỗ hoặc tự thử nghiệm đầy đủ 23 thẻ, Flash, Quiz, Shop.
           </p>
@@ -376,13 +393,13 @@ export const HomePage: React.FC<HomePageProps> = ({
               )
             }
           >
-            ▶️ Bắt đầu ván 1 máy
+            Bắt đầu ván 1 máy
           </button>
         </section>
 
         {/* Tạo phòng riêng Online (Firebase + dự phòng P2P) */}
         <section className="panel col">
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>🔑 Tạo phòng riêng (Mã &amp; QR)</h2>
+          <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.1rem' }}>Tạo phòng riêng (Mã &amp; QR)</h2>
           <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
             Tạo phòng giao hữu với bạn bè qua mã 6 ký tự &amp; QR Code (tối đa 5 khán giả, đồng bộ trực tuyến — tự chuyển P2P nếu cần).
           </p>
@@ -415,13 +432,13 @@ export const HomePage: React.FC<HomePageProps> = ({
             style={{ marginTop: 'auto' }}
             onClick={() => onCreateOnlineRoom(clockSec)}
           >
-            ➕ Tạo phòng riêng
+            Tạo phòng riêng
           </button>
         </section>
 
         {/* Tham gia phòng */}
         <section className="panel col">
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>🔗 Tham gia / Xem phòng riêng</h2>
+          <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.1rem' }}>Tham gia / Xem phòng riêng</h2>
           <p className="muted" style={{ margin: 0, fontSize: '0.86rem' }}>
             Nhập mã phòng 6 ký tự, dán đường dẫn hoặc quét mã QR từ máy Chủ phòng.
           </p>
@@ -438,13 +455,13 @@ export const HomePage: React.FC<HomePageProps> = ({
 
           <div className="row">
             <button type="button" onClick={() => setScannerOpen(true)}>
-              📷 Quét QR
+              Quét QR
             </button>
             <button type="button" className="btn-primary" onClick={() => handleJoin('player')}>
-              🎮 Vào chơi
+              Vào chơi
             </button>
             <button type="button" onClick={() => handleJoin('spectator')}>
-              👀 Vào xem
+              Vào xem
             </button>
           </div>
         </section>
@@ -454,7 +471,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       <section className="panel col">
         <div className="between">
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>📚 Bộ đề câu hỏi (cho Phòng riêng &amp; Chơi 1 máy)</h2>
+            <h2 className="festive-heading" style={{ margin: 0, fontSize: '1.05rem' }}>Bộ đề câu hỏi (Phòng riêng &amp; Chơi 1 máy)</h2>
             <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
               Tích hợp sẵn <strong>40 câu Giải tích 1</strong> đã xóa nét bút &amp; kiểm chứng công thức, hoặc chọn file <code>questions.json</code> riêng.
             </p>
@@ -470,7 +487,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               cursor: 'pointer',
             }}
           >
-            📤 Chọn file questions.json
+            Chọn file questions.json
             <input
               id="upload-bank-input"
               name="uploadBankFile"
@@ -498,8 +515,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                 className="between panel"
                 style={{
                   padding: '0.6rem 0.85rem',
-                  borderColor: isSelected ? '#6366f1' : undefined,
-                  background: isSelected ? 'rgba(79, 70, 229, 0.14)' : undefined,
+                  borderColor: isSelected ? 'var(--gold)' : undefined,
+                  background: isSelected ? 'rgba(212, 163, 89, 0.14)' : undefined,
                 }}
               >
                 <div className="row">

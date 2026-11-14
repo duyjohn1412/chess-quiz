@@ -55,6 +55,9 @@ export interface GamePageProps {
   onReplyDraw: (accept: boolean) => void;
   onResign: () => void;
   onRematch?: () => void;
+  chatMessages?: { id: string; senderUid: string; senderName: string; text: string }[];
+  myUid?: string | null;
+  onSendChat?: (text: string) => Promise<void> | void;
   onExit: () => void;
 }
 
@@ -90,11 +93,28 @@ export const GamePage: React.FC<GamePageProps> = ({
   onReplyDraw,
   onResign,
   onRematch,
+  chatMessages = [],
+  myUid,
+  onSendChat,
   onExit,
 }) => {
   const [nowTick, setNowTick] = useState(Date.now());
   const [soundOn, setSoundOn] = useState(soundFx.enabled);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+
+  const handleChatSubmit = async (rawText: string) => {
+    const trimmed = rawText.trim();
+    if (!trimmed || !onSendChat || sendingChat) return;
+    setSendingChat(true);
+    try {
+      await onSendChat(trimmed);
+      setChatInput('');
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   // Giữ đồng hồ UI mượt mỗi 100ms
   useEffect(() => {
@@ -181,9 +201,9 @@ export const GamePage: React.FC<GamePageProps> = ({
     }
     return (
       <main className="app-shell">
-        <header className="topbar">
+        <header className="topbar christmas-topbar">
           <div className="brand">
-            <span>♟️ Phòng {roomCode ?? ''}</span>
+            <span className="festive-title">Phòng {roomCode ?? ''}</span>
             <span className="badge">{viewerId === 'spectator' ? 'Khán giả' : 'Người chơi 2'}</span>
           </div>
           <button type="button" onClick={onExit}>
@@ -221,19 +241,19 @@ export const GamePage: React.FC<GamePageProps> = ({
         count={flashEvent?.count ?? 0}
       />
 
-      <header className="topbar">
+      <header className="topbar christmas-topbar">
         <div className="brand">
-          <span>♟️ Cờ Vua × Trắc Nghiệm</span>
+          <span className="festive-title">Cờ Vua × Trắc Nghiệm</span>
           {mode === 'hotseat' && <span className="badge">1 Máy (Hot-seat)</span>}
           {isRanked && (
-            <span className="badge" style={{ borderColor: '#f5a524', color: '#fbbf24' }}>
-              🏆 Ranked
+            <span className="badge" style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}>
+              Ranked
             </span>
           )}
           {mode !== 'hotseat' && (
             <span className="badge">{transport === 'firebase' ? 'Online' : 'P2P'}</span>
           )}
-          {viewerId === 'spectator' && <span className="badge">👀 Khán giả</span>}
+          {viewerId === 'spectator' && <span className="badge">Khán giả</span>}
           {roomCode && <span className="badge">Mã: {roomCode}</span>}
         </div>
 
@@ -263,7 +283,7 @@ export const GamePage: React.FC<GamePageProps> = ({
           </button>
 
           <button type="button" onClick={onExit}>
-            🏠 Thoát
+            Thoát
           </button>
         </div>
       </header>
@@ -400,21 +420,86 @@ export const GamePage: React.FC<GamePageProps> = ({
                     disabled={Boolean(state.drawOfferBy)}
                     onClick={onOfferDraw}
                   >
-                    🤝 Cầu hòa
+                    Cầu hòa
                   </button>
                   <button
                     type="button"
                     className="btn-danger"
                     onClick={() => setConfirmResign(true)}
                   >
-                    🏳️ Đầu hàng
+                    Đầu hàng
                   </button>
                 </div>
               </div>
             )}
 
+            {onSendChat && (
+              <section className="panel col" style={{ gap: '0.5rem' }}>
+                <strong className="festive-heading" style={{ fontSize: '0.92rem' }}>
+                  Trò chuyện trong trận
+                </strong>
+                <div className="row" style={{ gap: '0.35rem', flexWrap: 'wrap' }}>
+                  {['Chúc ván hay!', 'Nước đi hay đấy!', 'Đợi chút nhé', 'Tái đấu nhé!'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className="btn-mini"
+                      disabled={sendingChat}
+                      onClick={() => void handleChatSubmit(preset)}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <div className="chat-feed" style={{ maxBlockSize: 160 }}>
+                  {chatMessages.length === 0 ? (
+                    <span className="muted" style={{ fontSize: '0.8rem' }}>
+                      Chưa có tin nhắn nào trong trận…
+                    </span>
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMine = Boolean(myUid && msg.senderUid === myUid);
+                      return (
+                        <div key={msg.id} className={`chat-bubble ${isMine ? 'mine' : 'theirs'}`}>
+                          <div style={{ fontSize: '0.72rem', opacity: 0.8 }}>{msg.senderName}</div>
+                          <div>{msg.text}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <form
+                  className="row"
+                  style={{ gap: '0.4rem' }}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleChatSubmit(chatInput);
+                  }}
+                >
+                  <input
+                    id="match-chat-input"
+                    name="matchChat"
+                    className="input-field"
+                    value={chatInput}
+                    maxLength={240}
+                    placeholder="Nhắn với đối thủ..."
+                    onChange={(e) => setChatInput(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="btn-primary btn-mini"
+                    disabled={sendingChat || !chatInput.trim()}
+                  >
+                    Gửi
+                  </button>
+                </form>
+              </section>
+            )}
+
             <section className="panel col">
-              <strong style={{ fontSize: '0.9rem' }}>📜 Nhật ký trận đấu</strong>
+              <strong className="festive-heading" style={{ fontSize: '0.9rem' }}>
+                Nhật ký trận đấu
+              </strong>
               <div className="event-log">
                 {state.events.length === 0 ? (
                   <span className="muted">Chưa có sự kiện nào…</span>

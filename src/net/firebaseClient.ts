@@ -1,5 +1,24 @@
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, browserLocalPersistence, getAuth, setPersistence, signInAnonymously, User } from 'firebase/auth';
+import {
+  Auth,
+  browserLocalPersistence,
+  createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  FacebookAuthProvider,
+  getAuth,
+  GoogleAuthProvider,
+  linkWithCredential,
+  linkWithPopup,
+  onAuthStateChanged,
+  setPersistence,
+  signInAnonymously,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  Unsubscribe as AuthUnsubscribe,
+  updateProfile,
+  User,
+} from 'firebase/auth';
 import {
   collection,
   doc,
@@ -110,7 +129,110 @@ export async function ensureAnonymousAuth(): Promise<User> {
   }
 }
 
-function docToRankProfile(uid: string, data: Record<string, unknown>): RankProfile {
+export interface AccountInfo {
+  uid: string;
+  isAnonymous: boolean;
+  provider: 'guest' | 'google' | 'password' | 'facebook';
+  accountLabel: string;
+  friendId: string;
+}
+
+const USERNAME_EMAIL_DOMAIN = 'account.chessquiz.vn';
+
+export function uidToFriendId(uid: string): string {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < uid.length; i++) {
+    h ^= uid.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const num = 100_000_000 + (h % 900_000_000);
+  return String(num);
+}
+
+export function formatFriendId(id: string): string {
+  const clean = id.replace(/\D/g, '').slice(0, 9);
+  if (clean.length !== 9) return id;
+  return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6, 9)}`;
+}
+
+export function identifierToAuthEmail(identifier: string): string {
+  const clean = identifier.trim().toLowerCase();
+  if (!clean) {
+    throw new Error('Vui lòng nhập Tên tài khoản hoặc Email.');
+  }
+  if (clean.includes('@')) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      throw new Error('Địa chỉ Email không hợp lệ.');
+    }
+    return clean;
+  }
+  if (!/^[a-z0-9_.-]{3,24}$/.test(clean)) {
+    throw new Error('Tên tài khoản gồm 3–24 ký tự chữ không dấu, số hoặc _ . -');
+  }
+  return `${clean}@${USERNAME_EMAIL_DOMAIN}`;
+}
+
+export function extractAccountInfo(user: User | null): AccountInfo | null {
+  if (!user) return null;
+  const pid = user.providerData[0]?.providerId ?? '';
+  let provider: AccountInfo['provider'] = 'guest';
+  if (!user.isAnonymous) {
+    if (pid === 'google.com') provider = 'google';
+    else if (pid === 'facebook.com') provider = 'facebook';
+    else provider = 'password';
+  }
+
+  let accountLabel = 'Khách (chỉ lưu máy này)';
+  if (provider === 'password' && user.email) {
+    accountLabel = user.email.endsWith(`@${USERNAME_EMAIL_DOMAIN}`)
+      ? user.email.slice(0, -(`@${USERNAME_EMAIL_DOMAIN}`.length))
+      : user.email;
+  } else if (provider === 'google' || provider === 'facebook') {
+    accountLabel = user.email || user.displayName || (provider === 'google' ? 'Google' : 'Facebook');
+  }
+
+  return {
+    uid: user.uid,
+    isAnonymous: user.isAnonymous,
+    provider,
+    accountLabel,
+    friendId: uidToFriendId(user.uid),
+  };
+}
+
+export function translateAuthError(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code ?? '';
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Sai tên tài khoản/Email hoặc mật khẩu.';
+    case 'auth/email-already-in-use':
+    case 'auth/credential-already-in-use':
+      return 'Tài khoản hoặc Email này đã tồn tại. Hãy chuyển sang tab Đăng nhập.';
+    case 'auth/weak-password':
+      return 'Mật khẩu cần tối thiểu 6 ký tự.';
+    case 'auth/invalid-email':
+      return 'Định dạng Email hoặc Tên tài khoản không hợp lệ.';
+    case 'auth/popup-closed-by-user':
+      return 'Bạn đã đóng cửa sổ đăng nhập trước khi hoàn tất.';
+    case 'auth/popup-blocked':
+      return 'Trình duyệt đã chặn cửa sổ bật lên (Pop-up). Hãy cho phép Pop-up rồi thử lại.';
+    case 'auth/operation-not-allowed':
+      return 'Phương thức đăng nhập này chưa được bật trên máy chủ.';
+    case 'auth/network-request-failed':
+      return 'Lỗi kết nối mạng, vui lòng thử lại.';
+    default:
+      return err instanceof Error ? err.message : 'Đăng nhập không thành công.';
+  }
+}
+
+export function subscribeAuthState(cb: (user: User | null) => void): AuthUnsubscribe {
+  const { auth } = getFirebaseServices();
+  return onAuthStateChanged(auth, cb);
+}
+
+export function docToRankProfile(uid: string, data: Record<string, unknown>): RankProfile {
   return {
     uid,
     name: normalizePlayerDisplayName(String(data.name ?? 'Người chơi')),
@@ -129,10 +251,11 @@ function docToRankProfile(uid: string, data: Record<string, unknown>): RankProfi
 
 export async function loadOrCreateRankProfile(
   uid: string,
-  displayName: string
+  displayName: string,
+  preserveExistingName: boolean = false
 ): Promise<RankProfile> {
   const { db } = getFirebaseServices();
-  const cleanName = normalizePlayerDisplayName(displayName);
+  const cleanName = normalizePlayerDisplayName(displayName || 'Người chơi');
   const playerRef = doc(db, 'players', uid);
   const snap = await getDoc(playerRef);
 
@@ -157,7 +280,7 @@ export async function loadOrCreateRankProfile(
   }
 
   const profile = docToRankProfile(uid, snap.data() as Record<string, unknown>);
-  if (cleanName && cleanName !== profile.name) {
+  if (!preserveExistingName && cleanName && cleanName !== profile.name) {
     profile.name = cleanName;
     try {
       await updateDoc(playerRef, {
@@ -170,6 +293,155 @@ export async function loadOrCreateRankProfile(
   }
   saveCachedRankProfile(profile);
   return profile;
+}
+
+export async function registerWithAccount(
+  identifier: string,
+  password: string,
+  displayName: string
+): Promise<{ user: User; profile: RankProfile; migratedFromGuest: boolean }> {
+  const { auth } = getFirebaseServices();
+  const email = identifierToAuthEmail(identifier);
+  if (password.length < 6) {
+    throw new Error('Mật khẩu cần tối thiểu 6 ký tự.');
+  }
+  const cleanDisplay = normalizePlayerDisplayName(displayName || identifier);
+
+  try {
+    let user: User;
+    let migratedFromGuest = false;
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+      const cred = EmailAuthProvider.credential(email, password);
+      const linked = await linkWithCredential(auth.currentUser, cred);
+      user = linked.user;
+      migratedFromGuest = true;
+    } else {
+      const created = await createUserWithEmailAndPassword(auth, email, password);
+      user = created.user;
+    }
+    try {
+      await updateProfile(user, { displayName: cleanDisplay });
+    } catch {
+      // non-fatal
+    }
+    const profile = await loadOrCreateRankProfile(user.uid, cleanDisplay, false);
+    return { user, profile, migratedFromGuest };
+  } catch (err) {
+    throw new Error(translateAuthError(err));
+  }
+}
+
+export async function loginWithAccount(
+  identifier: string,
+  password: string
+): Promise<{ user: User; profile: RankProfile }> {
+  const { auth } = getFirebaseServices();
+  const email = identifierToAuthEmail(identifier);
+  if (!password) {
+    throw new Error('Vui lòng nhập mật khẩu.');
+  }
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const profile = await loadOrCreateRankProfile(cred.user.uid, cred.user.displayName || 'Người chơi', true);
+    return { user: cred.user, profile };
+  } catch (err) {
+    throw new Error(translateAuthError(err));
+  }
+}
+
+export async function loginWithGoogle(
+  currentDisplayName: string
+): Promise<{ user: User; profile: RankProfile; migratedFromGuest: boolean }> {
+  const { auth } = getFirebaseServices();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  try {
+    let user: User;
+    let migratedFromGuest = false;
+    let existingAccount = false;
+
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+      try {
+        const linked = await linkWithPopup(auth.currentUser, provider);
+        user = linked.user;
+        migratedFromGuest = true;
+      } catch (linkErr) {
+        const code = (linkErr as { code?: string } | null)?.code;
+        if (code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
+          const signed = await signInWithPopup(auth, provider);
+          user = signed.user;
+          existingAccount = true;
+        } else {
+          throw linkErr;
+        }
+      }
+    } else {
+      const signed = await signInWithPopup(auth, provider);
+      user = signed.user;
+      existingAccount = true;
+    }
+
+    const fallbackName = normalizePlayerDisplayName(
+      user.displayName || currentDisplayName || 'Người chơi'
+    );
+    const profile = await loadOrCreateRankProfile(user.uid, fallbackName, existingAccount);
+    return { user, profile, migratedFromGuest };
+  } catch (err) {
+    throw new Error(translateAuthError(err));
+  }
+}
+
+export async function loginWithFacebook(
+  currentDisplayName: string
+): Promise<{ user: User; profile: RankProfile; migratedFromGuest: boolean }> {
+  const { auth } = getFirebaseServices();
+  const provider = new FacebookAuthProvider();
+
+  try {
+    let user: User;
+    let migratedFromGuest = false;
+    let existingAccount = false;
+
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+      try {
+        const linked = await linkWithPopup(auth.currentUser, provider);
+        user = linked.user;
+        migratedFromGuest = true;
+      } catch (linkErr) {
+        const code = (linkErr as { code?: string } | null)?.code;
+        if (code === 'auth/credential-already-in-use' || code === 'auth/email-already-in-use') {
+          const signed = await signInWithPopup(auth, provider);
+          user = signed.user;
+          existingAccount = true;
+        } else {
+          throw linkErr;
+        }
+      }
+    } else {
+      const signed = await signInWithPopup(auth, provider);
+      user = signed.user;
+      existingAccount = true;
+    }
+
+    const fallbackName = normalizePlayerDisplayName(
+      user.displayName || currentDisplayName || 'Người chơi'
+    );
+    const profile = await loadOrCreateRankProfile(user.uid, fallbackName, existingAccount);
+    return { user, profile, migratedFromGuest };
+  } catch (err) {
+    throw new Error(translateAuthError(err));
+  }
+}
+
+export async function logoutToGuest(
+  fallbackDisplayName: string = 'Người chơi'
+): Promise<{ user: User; profile: RankProfile }> {
+  const { auth } = getFirebaseServices();
+  await signOut(auth);
+  const cred = await signInAnonymously(auth);
+  const profile = await loadOrCreateRankProfile(cred.user.uid, fallbackDisplayName, true);
+  return { user: cred.user, profile };
 }
 
 export async function syncRankDisplayName(uid: string, displayName: string): Promise<void> {

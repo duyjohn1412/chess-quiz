@@ -1,18 +1,22 @@
 :root {
   color-scheme: dark;
-  --bg: #0f1115;
-  --panel: #181b22;
-  --panel-2: #212530;
-  --border: #2e3545;
-  --text: #e8eaf0;
-  --muted: #98a2b3;
-  --time: #f5a524;
-  --support: #3ecf8e;
-  --peek: #7c5cff;
-  --quiz: #ff5c7a;
-  --danger: #ef4444;
+  --bg: #0f1914;
+  --panel: #16231c;
+  --panel-2: #1d2e25;
+  --border: #2c4034;
+  --text: #f6f1e7;
+  --muted: #b3c2b7;
+  --time: #d4a359;
+  --gold: #d4a359;
+  --primary: #a3242b;
+  --primary-hover: #8a1d23;
+  --success: #1f6f43;
+  --support: #2fb375;
+  --peek: #d4a359;
+  --quiz: #d94a59;
+  --danger: #c93b3b;
   --ok: #22c55e;
-  scrollbar-color: #465066 #14171d;
+  scrollbar-color: #3d5646 #0c1410;
 }
 
 *,
@@ -26,8 +30,12 @@ body {
   margin: 0;
   padding: 0;
   background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at top left, rgba(163, 36, 43, 0.14), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(31, 111, 67, 0.16), transparent 60%);
+  background-attachment: fixed;
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.45;
   min-block-size: 100dvh;
   -webkit-tap-highlight-color: transparent;
@@ -52,8 +60,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #2a3040;
-  border-color: #47526c;
+  background: #253b2f;
+  border-color: #466652;
 }
 
 button:active:not(:disabled) {
@@ -66,35 +74,73 @@ button:disabled {
 }
 
 :where(a:any-link, button, input, select):focus-visible {
-  outline: 3px solid var(--peek);
+  outline: 3px solid var(--gold);
   outline-offset: 2px;
 }
 
 .btn-primary {
-  background: #4f46e5;
-  border-color: #6366f1;
-  color: #fff;
+  background: var(--primary);
+  border-color: #c73c44;
+  color: #fffaf2;
 }
 .btn-primary:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--primary-hover);
 }
 
 .btn-danger {
-  background: #7f1d1d;
+  background: #7b1e23;
   border-color: #dc2626;
   color: #fee2e2;
 }
 .btn-danger:hover:not(:disabled) {
-  background: #991b1b;
+  background: #962128;
 }
 
 .btn-success {
-  background: #14532d;
-  border-color: #22c55e;
-  color: #dcfce7;
+  background: var(--success);
+  border-color: #2f9960;
+  color: #e9fff1;
+}
+.btn-success:hover:not(:disabled) {
+  background: #268250;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  inline-size: 100%;
+  background: #f8f5ef;
+  border-color: #e2d8c5;
+  color: #1c1917;
+  font-weight: 700;
+}
+.btn-google:hover:not(:disabled) {
+  background: #ffffff;
+  border-color: #d4a359;
+}
+
+.btn-mini {
+  min-block-size: 30px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  border-radius: 8px;
+}
+
+.btn-link {
+  background: transparent;
+  border: none;
+  min-block-size: auto;
+  padding: 0;
+  color: var(--gold);
+  text-decoration: underline;
+  font-size: inherit;
 }
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   inline-size: 100%;
   max-inline-size: 1120px;
   margin-inline: auto;
@@ -116,6 +162,17 @@ button:disabled {
   padding: 0.6rem 0.9rem;
 }
 
+.topbar.christmas-topbar {
+  background: linear-gradient(
+    135deg,
+    rgba(163, 36, 43, 0.16),
+    rgba(22, 35, 28, 0.96) 55%,
+    rgba(31, 111, 67, 0.16)
+  );
+  border-color: rgba(212, 163, 89, 0.36);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -125,11 +182,49 @@ button:disabled {
   letter-spacing: -0.01em;
 }
 
+.festive-title {
+  font-family: 'Cinzel', 'Be Vietnam Pro', Georgia, serif;
+  color: #faecd4;
+  letter-spacing: 0.02em;
+}
+
+.festive-heading {
+  font-family: 'Cinzel', 'Be Vietnam Pro', Georgia, serif;
+  color: #f6e7cb;
+  letter-spacing: 0.01em;
+}
+
+.festive-tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(163, 36, 43, 0.28);
+  border: 1px solid rgba(212, 163, 89, 0.5);
+  color: var(--gold);
+}
+
+.festive-badge {
+  border-color: rgba(212, 163, 89, 0.45);
+  color: var(--gold);
+  background: rgba(212, 163, 89, 0.1);
+}
+
+.active-snow {
+  border-color: rgba(212, 163, 89, 0.65);
+  background: rgba(31, 111, 67, 0.3);
+  color: #fff4df;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
 }
 
 .game-layout {
@@ -549,7 +644,7 @@ dialog.game-dialog::backdrop {
   overscroll-behavior: contain;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #12151c;
+  background: #101b15;
 }
 
 .leaderboard-table {
@@ -561,7 +656,7 @@ dialog.game-dialog::backdrop {
 .leaderboard-table th,
 .leaderboard-table td {
   padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid rgba(46, 53, 69, 0.55);
+  border-bottom: 1px solid rgba(44, 64, 52, 0.65);
   text-align: start;
 }
 
@@ -574,15 +669,257 @@ dialog.game-dialog::backdrop {
 }
 
 .leaderboard-table tr.self-row {
-  background: rgba(79, 70, 229, 0.18);
+  background: rgba(212, 163, 89, 0.16);
 }
 
 .rank-hero {
-  border-color: rgba(245, 165, 36, 0.45);
-  background: linear-gradient(155deg, rgba(245, 165, 36, 0.08), var(--panel) 55%);
+  border-color: rgba(212, 163, 89, 0.44);
+  background: linear-gradient(155deg, rgba(212, 163, 89, 0.1), var(--panel) 58%);
+}
+
+/* Mạng xã hội: BXH, Kết bạn qua ID 9 số, Chat 1-1 & Chat Thế Giới */
+.social-hub {
+  border-color: rgba(47, 153, 96, 0.35);
+}
+
+.tab-strip {
+  display: flex;
+  gap: 0.35rem;
+  background: #101b15;
+  padding: 0.25rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  min-block-size: 34px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.tab-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  border-color: #c73c44;
+  color: #fffaf2;
+}
+
+.id-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: #101b15;
+  border: 1px dashed rgba(212, 163, 89, 0.45);
+}
+
+.id-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-block-size: 30px;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #101b15;
+  border: 1px solid rgba(212, 163, 89, 0.48);
+  color: var(--gold);
+}
+
+.notif-dot {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 999px;
+  background: #fbbf24;
+  display: inline-block;
+}
+
+.unread-pill {
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-block-size: 205px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: #101b15;
+  border: 1px solid var(--border);
+}
+
+.dm-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border-radius: 10px;
+  background: #101b15;
+  border: 1px solid var(--border);
+}
+
+.chat-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-radius: 10px;
+  background: #0d1611;
+  border: 1px solid var(--border);
+  overscroll-behavior: contain;
+}
+
+.chat-bubble {
+  max-inline-size: 85%;
+  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  word-break: break-word;
+}
+
+.chat-bubble.mine {
+  align-self: flex-end;
+  background: rgba(31, 111, 67, 0.38);
+  border: 1px solid rgba(47, 153, 96, 0.45);
+  color: #f3faf5;
+}
+
+.chat-bubble.theirs {
+  align-self: flex-start;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+.global-msg {
+  padding: 0.4rem 0.55rem;
+  border-radius: 9px;
+  background: var(--panel);
+  border: 1px solid rgba(44, 64, 52, 0.65);
+  font-size: 0.83rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.global-msg.me {
+  border-color: rgba(212, 163, 89, 0.45);
+  background: rgba(212, 163, 89, 0.08);
+}
+
+.divider-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.divider-label::before,
+.divider-label::after {
+  content: '';
+  flex: 1;
+  block-size: 1px;
+  background: var(--border);
+}
+
+.update-modal-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.65rem;
+}
+
+.update-notice-box {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(31, 111, 67, 0.16);
+  border: 1px solid rgba(212, 163, 89, 0.42);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.update-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+/* Hiệu ứng tuyết rơi Giáng Sinh nhẹ nhàng */
+.snow-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.snowflake {
+  position: absolute;
+  top: -12px;
+  left: var(--left, 50%);
+  inline-size: var(--size, 4px);
+  block-size: var(--size, 4px);
+  border-radius: 50%;
+  background: rgba(255, 250, 240, var(--alpha, 0.35));
+  box-shadow: 0 0 6px rgba(255, 250, 240, 0.25);
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .snowflake {
+    animation: snowfall-drop var(--dur, 12s) linear var(--delay, 0s) infinite;
+  }
+
+  @keyframes snowfall-drop {
+    0% {
+      transform: translate3d(0, -10px, 0);
+    }
+    50% {
+      transform: translate3d(14px, 52vh, 0);
+    }
+    100% {
+      transform: translate3d(-8px, 105vh, 0);
+    }
+  }
+
   .quick-pulse {
     animation: quickPulse 1.5s ease-in-out infinite;
   }
@@ -593,5 +930,11 @@ dialog.game-dialog::backdrop {
     50% {
       opacity: 0.65;
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snow-layer {
+    display: none;
   }
 }

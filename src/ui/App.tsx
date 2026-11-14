@@ -1,12 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CFG } from '../config/defaults';
 import { HostSession } from '../net/host';
 import { GuestSession } from '../net/guest';
 import {
+  AccountInfo,
   commitRankedMatchResult,
   ensureAnonymousAuth,
+  extractAccountInfo,
   fetchLeaderboard,
+  getFirebaseServices,
   loadOrCreateRankProfile,
+  subscribeAuthState,
   syncRankDisplayName,
 } from '../net/firebaseClient';
 import { hasFirebaseConfig } from '../net/firebaseConfig';
@@ -14,6 +18,14 @@ import { QuickMatchAssigned, QuickMatchController } from '../net/firebaseMatchma
 import { FirebaseGuestSession, FirebaseHostSession } from '../net/firebaseRoom';
 import { C2H, QuizPayload, ResultPayload, ShopPayload } from '../net/protocol';
 import { extractCodeFromInput, isQuickRoomCode } from '../net/roomCode';
+import {
+  FriendshipItem,
+  RoomChatItem,
+  sendDirectMessage,
+  sendRoomChatMessage,
+  subscribeRoomChat,
+  syncSocialProfile,
+} from '../net/socialSystem';
 import { HotseatSession } from '../engine/hotseatSession';
 import { BUILTIN_BANKS, DEFAULT_BANK, listBanksFromIdb } from '../quiz/bankLoader';
 import {
@@ -25,6 +37,9 @@ import {
 } from '../rank/rankSystem';
 import { GameEvent, GameOverInfo, PlayerId, PublicState, QuestionBank } from '../types/game';
 import { soundFx } from '../utils/sound';
+import { AuthModal } from './components/AuthModal';
+import { SnowfallOverlay } from './components/SnowfallOverlay';
+import { UpdateAnnouncementModal } from './components/UpdateAnnouncementModal';
 import { HomePage, QuickMatchUiState } from './pages/HomePage';
 import { HostLobbyPage } from './pages/HostLobbyPage';
 import { GamePage } from './pages/GamePage';
@@ -44,8 +59,20 @@ export const App: React.FC = () => {
   const [selectedBankId, setSelectedBankId] = useState<string>(DEFAULT_BANK.bank);
 
   const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
+  const [account, setAccount] = useState<AccountInfo | null>(null);
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [firebaseStatusText, setFirebaseStatusText] = useState<string | undefined>(undefined);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState<boolean>(
+    () => !localStorage.getItem('cq_update_christmas_v2_seen')
+  );
+  const [snowEnabled, setSnowEnabled] = useState<boolean>(
+    () => localStorage.getItem('cq_snow_enabled') !== '0'
+  );
+  const [roomChatMsgs, setRoomChatMsgs] = useState<RoomChatItem[]>([]);
+  const [localBotChatMsgs, setLocalBotChatMsgs] = useState<RoomChatItem[]>([]);
+  const [isBotMatch, setIsBotMatch] = useState(false);
+  const [botOpponentName, setBotOpponentName] = useState('');
   const [rankProfile, setRankProfile] = useState<RankProfile | null>(() => loadCachedRankProfile());
   const [leaderboard, setLeaderboard] = useState<RankProfile[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -99,6 +126,12 @@ export const App: React.FC = () => {
   const hotseatRef = useRef<HotseatSession | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const rankNameDebounceRef = useRef<number | null>(null);
+  const pendingChallengeRef = useRef<{
+    pairId: string;
+    peerUid: string;
+    peerName: string;
+    clockSeconds: number;
+  } | null>(null);
 
   const matchMetaRef = useRef<{
     isRanked: boolean;
@@ -150,7 +183,7 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Khởi tạo Firebase Anonymous Auth + nạp Rank Profile + BXH
+  // Khởi tạo Firebase Auth (Guest hoặc Tài khoản đã đăng nhập) + nạp Rank Profile + BXH
   useEffect(() => {
     let mounted = true;
     if (!hasFirebaseConfig()) {
@@ -158,17 +191,30 @@ export const App: React.FC = () => {
       return;
     }
 
+    const unsubAuth = subscribeAuthState((u) => {
+      if (mounted) {
+        setAccount(extractAccountInfo(u));
+      }
+    });
+
     (async () => {
       try {
         const user = await ensureAnonymousAuth();
         if (!mounted) return;
+        const acc = extractAccountInfo(user);
+        setAccount(acc);
         setFirebaseUid(user.uid);
         matchMetaRef.current.uid = user.uid;
-        const prof = await loadOrCreateRankProfile(user.uid, playerName);
+        const prof = await loadOrCreateRankProfile(user.uid, playerName, !user.isAnonymous);
         if (!mounted) return;
         setRankProfile(prof);
+        if (!user.isAnonymous && prof.name && prof.name !== 'Người chơi') {
+          setPlayerName(prof.name);
+          localStorage.setItem('cqPlayerName', prof.name);
+        }
         setFirebaseReady(true);
         setFirebaseStatusText(undefined);
+        void syncSocialProfile(prof, acc);
         void refreshLeaderboard();
       } catch (err) {
         if (!mounted) return;
@@ -181,6 +227,7 @@ export const App: React.FC = () => {
 
     return () => {
       mounted = false;
+      unsubAuth();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -199,6 +246,8 @@ export const App: React.FC = () => {
 
   const firebaseUidRef = useRef<string | null>(firebaseUid);
   firebaseUidRef.current = firebaseUid;
+  const accountRef = useRef<AccountInfo | null>(account);
+  accountRef.current = account;
   const rankEloRef = useRef<number>(rankProfile?.elo ?? 1000);
   rankEloRef.current = rankProfile?.elo ?? 1000;
   const playerNameRef = useRef<string>(playerName);
@@ -223,6 +272,10 @@ export const App: React.FC = () => {
     setGameOver(null);
     setRankDiff(null);
     setIsRankedMatch(false);
+    setIsBotMatch(false);
+    setBotOpponentName('');
+    setRoomChatMsgs([]);
+    setLocalBotChatMsgs([]);
     setFlashEvent(null);
     setRoomCode('');
     setSpectatorCount(0);
@@ -269,6 +322,7 @@ export const App: React.FC = () => {
       if (res) {
         setRankProfile(res.profile);
         setRankDiff(res.diff);
+        void syncSocialProfile(res.profile, accountRef.current);
         void refreshLeaderboard();
       }
     },
@@ -278,10 +332,13 @@ export const App: React.FC = () => {
   // Bảo đảm luôn có UID + Profile trước khi vào Firebase match
   const prepareFirebaseIdentity = useCallback(async () => {
     const user = await ensureAnonymousAuth();
+    const acc = extractAccountInfo(user);
+    setAccount(acc);
     setFirebaseUid(user.uid);
-    const prof = await loadOrCreateRankProfile(user.uid, playerNameRef.current);
+    const prof = await loadOrCreateRankProfile(user.uid, playerNameRef.current, !user.isAnonymous);
     setRankProfile(prof);
     setFirebaseReady(true);
+    void syncSocialProfile(prof, acc);
     return { uid: user.uid, prof };
   }, []);
 
@@ -373,8 +430,17 @@ export const App: React.FC = () => {
 
   // Mở phòng riêng Online (Firebase ưu tiên -> tự chuyển PeerJS nếu offline/lỗi)
   const startHostOnline = useCallback(
-    async (clockSeconds: 180 | 300 | 600) => {
+    async (clockSeconds: 180 | 300 | 600, challengeFriend?: FriendshipItem) => {
+      pendingChallengeRef.current = challengeFriend
+        ? {
+            pairId: challengeFriend.pairId,
+            peerUid: challengeFriend.peerUid,
+            peerName: challengeFriend.peerName,
+            clockSeconds,
+          }
+        : null;
       if (!hasFirebaseConfig()) {
+        pendingChallengeRef.current = null;
         startPeerJsHost(clockSeconds);
         return;
       }
@@ -404,6 +470,23 @@ export const App: React.FC = () => {
             onRoomReady: (code) => {
               setRoomCode(code);
               matchMetaRef.current.roomCode = code;
+              const ch = pendingChallengeRef.current;
+              if (ch && firebaseUidRef.current) {
+                pendingChallengeRef.current = null;
+                void sendDirectMessage({
+                  pairId: ch.pairId,
+                  fromUid: firebaseUidRef.current,
+                  fromName: playerNameRef.current || prof.name,
+                  toUid: ch.peerUid,
+                  text: `Mời bạn vào phòng riêng ${code} (${clockSeconds / 60} phút) để so tài!`,
+                  inviteRoomCode: code,
+                  clockSeconds,
+                })
+                  .then(() => {
+                    showToast(`Đã gửi lời mời phòng ${code} tới ${ch.peerName}!`);
+                  })
+                  .catch(() => {});
+              }
             },
             onPeerError: (msg) => showToast(msg),
             onHostState: (st) => {
@@ -567,6 +650,8 @@ export const App: React.FC = () => {
           committed: false,
         };
         const isBot = match.guestUid.startsWith('bot_') || Boolean(match.isBot);
+        setIsBotMatch(isBot);
+        setBotOpponentName(isBot ? match.guestName : '');
         if (isBot) {
           showToast(`⚡ Ghép trận với ${match.guestName} (${match.guestElo} Elo)`);
         }
@@ -968,12 +1053,107 @@ export const App: React.FC = () => {
     },
   };
 
+  // Đăng ký kênh chat trong phòng
+  useEffect(() => {
+    if (transport !== 'firebase' || !roomCode || screen.kind === 'home' || !firebaseReady) {
+      setRoomChatMsgs([]);
+      return;
+    }
+    return subscribeRoomChat(roomCode, setRoomChatMsgs);
+  }, [firebaseReady, roomCode, screen.kind, transport]);
+
+  const combinedChatMsgs = useMemo(
+    () => [...roomChatMsgs, ...localBotChatMsgs].sort((a, b) => a.createdAtMs - b.createdAtMs),
+    [localBotChatMsgs, roomChatMsgs]
+  );
+
+  const handleSendMatchChat = useCallback(
+    async (text: string) => {
+      const uid = firebaseUidRef.current || 'local-player';
+      const senderName = rankProfile?.name || playerNameRef.current || 'Người chơi';
+      if (transport === 'firebase' && roomCode && firebaseUidRef.current) {
+        try {
+          await sendRoomChatMessage(roomCode, {
+            senderUid: firebaseUidRef.current,
+            senderName,
+            text,
+          });
+        } catch (err) {
+          showToast(`Không gửi được tin nhắn: ${err instanceof Error ? err.message : String(err)}`);
+          return;
+        }
+      } else {
+        setLocalBotChatMsgs((prev) => [
+          ...prev,
+          { id: `local-${Date.now()}`, senderUid: uid, senderName, text, createdAtMs: Date.now() },
+        ]);
+      }
+
+      if (isBotMatch) {
+        const lower = text.toLowerCase();
+        let reply = 'Nước đi thú vị đấy! Chúc bạn chơi vui nhé.';
+        if (lower.includes('chào') || lower.includes('hi') || lower.includes('chúc')) {
+          reply = 'Chào bạn! Chúc bạn có một ván cờ thật hấp dẫn mùa Giáng Sinh!';
+        } else if (lower.includes('hay') || lower.includes('đỉnh') || lower.includes('tốt')) {
+          reply = 'Cảm ơn bạn nhé! Mình cũng đang tập trung tính nước tiếp theo đây.';
+        } else if (lower.includes('đợi') || lower.includes('chờ')) {
+          reply = 'Cứ thong thả suy nghĩ nhé, mình chờ bạn!';
+        } else if (lower.includes('tái đấu') || lower.includes('rematch')) {
+          reply = 'Sau ván này bạn nhấn Tìm trận nhanh là chúng ta có thể gặp lại nhau ngay!';
+        }
+        window.setTimeout(() => {
+          setLocalBotChatMsgs((prev) => [
+            ...prev,
+            {
+              id: `bot-reply-${Date.now()}`,
+              senderUid: 'bot_opponent',
+              senderName: botOpponentName || 'Đối thủ AI',
+              text: reply,
+              createdAtMs: Date.now(),
+            },
+          ]);
+        }, 700);
+      }
+    },
+    [botOpponentName, isBotMatch, rankProfile?.name, roomCode, showToast, transport]
+  );
+
+  const handleAuthSuccess = useCallback(
+    (res: { profile: RankProfile; message: string }) => {
+      const { auth } = getFirebaseServices();
+      const user = auth.currentUser;
+      const acc = extractAccountInfo(user);
+      setAccount(acc);
+      if (user) {
+        setFirebaseUid(user.uid);
+        matchMetaRef.current.uid = user.uid;
+      }
+      setRankProfile(res.profile);
+      setPlayerName(res.profile.name);
+      localStorage.setItem('cqPlayerName', res.profile.name);
+      void syncSocialProfile(res.profile, acc);
+      void refreshLeaderboard();
+      showToast(res.message);
+    },
+    [refreshLeaderboard, showToast]
+  );
+
+  const handleToggleSnow = useCallback(() => {
+    setSnowEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('cq_snow_enabled', next ? '1' : '0');
+      return next;
+    });
+  }, []);
+
+  let content: React.ReactNode;
+
   if (screen.kind === 'home' || !state) {
     if (screen.kind === 'guest' && !state) {
-      return (
+      content = (
         <main className="app-shell">
           <div className="panel col" style={{ maxInlineSize: 460, marginInline: 'auto', textAlign: 'center' }}>
-            <h2 style={{ margin: 0 }}>🔄 Đang kết nối vào phòng {roomCode}…</h2>
+            <h2 style={{ margin: 0 }}>Đang kết nối vào phòng {roomCode}…</h2>
             {toastMsg && <div className="effect-banner danger">{toastMsg}</div>}
             <button type="button" onClick={act.onExit}>
               ← Quay lại
@@ -981,57 +1161,69 @@ export const App: React.FC = () => {
           </div>
         </main>
       );
+    } else {
+      content = (
+        <HomePage
+          playerName={playerName}
+          onPlayerNameChange={(v) => {
+            setPlayerName(v);
+            localStorage.setItem('cqPlayerName', v);
+            const clean = v.trim().slice(0, 24) || 'Người chơi';
+            if (rankProfile) {
+              const updated = { ...rankProfile, name: clean };
+              setRankProfile(updated);
+              saveCachedRankProfile(updated);
+            }
+            if (firebaseUid) {
+              if (rankNameDebounceRef.current) clearTimeout(rankNameDebounceRef.current);
+              rankNameDebounceRef.current = window.setTimeout(() => {
+                void syncRankDisplayName(firebaseUid, v);
+                if (rankProfile) {
+                  void syncSocialProfile({ ...rankProfile, name: clean }, accountRef.current);
+                }
+              }, 800);
+            }
+          }}
+          account={account}
+          snowEnabled={snowEnabled}
+          onToggleSnow={handleToggleSnow}
+          onOpenAuth={() => setAuthOpen(true)}
+          onOpenUpdates={() => setUpdateOpen(true)}
+          banks={banks}
+          selectedBankId={selectedBankId}
+          onSelectBankId={setSelectedBankId}
+          onBanksChanged={refreshBanks}
+          rankProfile={rankProfile}
+          leaderboard={leaderboard}
+          leaderboardLoading={leaderboardLoading}
+          firebaseReady={firebaseReady}
+          firebaseUid={firebaseUid}
+          firebaseStatusText={firebaseStatusText}
+          toastMsg={toastMsg}
+          onShowToast={showToast}
+          quickMatch={quickMatch}
+          onStartQuickMatch={(sec) => {
+            void startQuickMatch(sec);
+          }}
+          onCancelQuickMatch={stopQuickSearch}
+          onRefreshLeaderboard={() => {
+            void refreshLeaderboard();
+          }}
+          onCreateOnlineRoom={(sec) => {
+            void startHostOnline(sec);
+          }}
+          onJoinOnlineRoom={(code, role) => {
+            void joinOnlineRoom(code, role);
+          }}
+          onChallengeFriend={(friend) => {
+            void startHostOnline(300, friend);
+          }}
+          onStartHotseat={startHotseat}
+        />
+      );
     }
-
-    return (
-      <HomePage
-        playerName={playerName}
-        onPlayerNameChange={(v) => {
-          setPlayerName(v);
-          localStorage.setItem('cqPlayerName', v);
-          if (rankProfile) {
-            const updated = { ...rankProfile, name: v.trim().slice(0, 24) || 'Người chơi' };
-            setRankProfile(updated);
-            saveCachedRankProfile(updated);
-          }
-          if (firebaseUid) {
-            if (rankNameDebounceRef.current) clearTimeout(rankNameDebounceRef.current);
-            rankNameDebounceRef.current = window.setTimeout(() => {
-              void syncRankDisplayName(firebaseUid, v);
-            }, 800);
-          }
-        }}
-        banks={banks}
-        selectedBankId={selectedBankId}
-        onSelectBankId={setSelectedBankId}
-        onBanksChanged={refreshBanks}
-        rankProfile={rankProfile}
-        leaderboard={leaderboard}
-        leaderboardLoading={leaderboardLoading}
-        firebaseReady={firebaseReady}
-        firebaseStatusText={firebaseStatusText}
-        toastMsg={toastMsg}
-        quickMatch={quickMatch}
-        onStartQuickMatch={(sec) => {
-          void startQuickMatch(sec);
-        }}
-        onCancelQuickMatch={stopQuickSearch}
-        onRefreshLeaderboard={() => {
-          void refreshLeaderboard();
-        }}
-        onCreateOnlineRoom={(sec) => {
-          void startHostOnline(sec);
-        }}
-        onJoinOnlineRoom={(code, role) => {
-          void joinOnlineRoom(code, role);
-        }}
-        onStartHotseat={startHotseat}
-      />
-    );
-  }
-
-  if (screen.kind === 'host' && state.phase === 'LOBBY' && !isRankedMatch) {
-    return (
+  } else if (screen.kind === 'host' && state.phase === 'LOBBY' && !isRankedMatch) {
+    content = (
       <HostLobbyPage
         code={roomCode}
         transport={transport === 'peerjs' ? 'peerjs' : 'firebase'}
@@ -1048,54 +1240,85 @@ export const App: React.FC = () => {
         onCancelRoom={act.onExit}
       />
     );
+  } else {
+    content = (
+      <GamePage
+        mode={
+          screen.kind === 'hotseat'
+            ? 'hotseat'
+            : viewerId === 'spectator'
+              ? 'spectator'
+              : screen.kind === 'host'
+                ? 'host'
+                : 'guest'
+        }
+        transport={transport}
+        isRanked={isRankedMatch}
+        rankDiff={rankDiff}
+        roomCode={roomCode || undefined}
+        viewerId={viewerId}
+        state={state}
+        stateReceivedAtMs={stateReceivedAtMs}
+        quiz={quiz}
+        result={result}
+        shop={shop}
+        gameOver={gameOver}
+        flashEvent={flashEvent}
+        toastMsg={toastMsg}
+        hotseatCurtain={
+          screen.kind === 'hotseat' && hotseatPrivacy
+            ? {
+                locked: hotseatCurtainLocked,
+                targetPlayerId: hotseatTargetActor,
+                reason: hotseatCurtainReason,
+                onUnlock: () => {
+                  setHotseatCurtainLocked(false);
+                  const hs = hotseatRef.current;
+                  if (hs) {
+                    hs.setPaused(false, hotseatTargetActor);
+                    setViewerId(hotseatTargetActor);
+                    const maps = hotseatMapsRef.current;
+                    setQuiz(maps.quizzes[hotseatTargetActor]);
+                    setResult(maps.results[hotseatTargetActor]);
+                    setShop(maps.shops[hotseatTargetActor]);
+                  }
+                },
+              }
+            : undefined
+        }
+        chatMessages={combinedChatMsgs}
+        myUid={firebaseUid}
+        onSendChat={transport === 'firebase' && roomCode ? handleSendMatchChat : undefined}
+        {...act}
+      />
+    );
   }
 
   return (
-    <GamePage
-      mode={
-        screen.kind === 'hotseat'
-          ? 'hotseat'
-          : viewerId === 'spectator'
-            ? 'spectator'
-            : screen.kind === 'host'
-              ? 'host'
-              : 'guest'
-      }
-      transport={transport}
-      isRanked={isRankedMatch}
-      rankDiff={rankDiff}
-      roomCode={roomCode || undefined}
-      viewerId={viewerId}
-      state={state}
-      stateReceivedAtMs={stateReceivedAtMs}
-      quiz={quiz}
-      result={result}
-      shop={shop}
-      gameOver={gameOver}
-      flashEvent={flashEvent}
-      toastMsg={toastMsg}
-      hotseatCurtain={
-        screen.kind === 'hotseat' && hotseatPrivacy
-          ? {
-              locked: hotseatCurtainLocked,
-              targetPlayerId: hotseatTargetActor,
-              reason: hotseatCurtainReason,
-              onUnlock: () => {
-                setHotseatCurtainLocked(false);
-                const hs = hotseatRef.current;
-                if (hs) {
-                  hs.setPaused(false, hotseatTargetActor);
-                  setViewerId(hotseatTargetActor);
-                  const maps = hotseatMapsRef.current;
-                  setQuiz(maps.quizzes[hotseatTargetActor]);
-                  setResult(maps.results[hotseatTargetActor]);
-                  setShop(maps.shops[hotseatTargetActor]);
-                }
-              },
-            }
-          : undefined
-      }
-      {...act}
-    />
+    <>
+      <SnowfallOverlay enabled={snowEnabled} />
+      {content}
+      <AuthModal
+        open={authOpen}
+        account={account}
+        currentDisplayName={playerName}
+        currentElo={rankProfile?.elo ?? 1000}
+        onClose={() => setAuthOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
+      <UpdateAnnouncementModal
+        open={updateOpen}
+        isAnonymous={account?.isAnonymous ?? true}
+        onClose={() => {
+          localStorage.setItem('cq_update_christmas_v2_seen', '1');
+          setUpdateOpen(false);
+        }}
+        onOpenAuth={() => {
+          localStorage.setItem('cq_update_christmas_v2_seen', '1');
+          setUpdateOpen(false);
+          setAuthOpen(true);
+        }}
+      />
+    </>
   );
 };
